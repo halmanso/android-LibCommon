@@ -1,0 +1,11 @@
+<resources>
+  <declare-styleable name="SlideLayout">
+    <attr name="speed" format="integer" />
+    <attr name="slideOutDirection">
+        <enum name="up" value="1" />
+        <enum name="down" value="2" />
+        <enum name="right" value="3" />
+        <enum name="left" value="4" />
+    </attr>
+  </declare-styleable>
+</resources>
