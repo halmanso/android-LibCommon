@@ -1,6 +1,5 @@
 package edu.purdue.libwaterapps.rock;
 
-import java.util.ArrayList;
 import java.util.Date;
 
 import android.content.ContentUris;
@@ -13,6 +12,7 @@ import com.google.android.maps.GeoPoint;
 
 import edu.purdue.libwaterapps.db.RockDB;
 import edu.purdue.libwaterapps.provider.RockProvider;
+import edu.purdue.libwaterapps.utils.NotifyArrayList;
 
 /* A class which knows everything about a given rock */
 public class Rock {
@@ -37,6 +37,13 @@ public class Rock {
 		RockProvider.Constants.UPDATE_TIME,
 		RockProvider.Constants.TRELLO_PULL_TIME
 	};
+	
+	/*
+	 * A way to make a dummy rock. A context needs to be set if going to interact with the content provider
+	 */
+	public Rock() {
+		
+	}
 	
 	public Rock(Context context) {
 		this.updateDate = new Date(0);
@@ -70,8 +77,8 @@ public class Rock {
 		return rock;
 	}
 	
-	public static ArrayList<Rock> getAllRocks(Context context) { 
-		ArrayList<Rock> rocks = new ArrayList<Rock>();
+	public static NotifyArrayList<Rock> getAllRocks(Context context) { 
+		NotifyArrayList<Rock> rocks = new NotifyArrayList<Rock>();
 		
 		Cursor cursor = context.getContentResolver().query(RockProvider.Constants.CONTENT_URI, 
 														   Rock.rockProjection, null, null, "");
@@ -88,8 +95,8 @@ public class Rock {
 		return rocks;
 	}
 	
-	public static ArrayList<Rock> getAllPickedRocks(Context context) { 
-		ArrayList<Rock> rocks = new ArrayList<Rock>();
+	public static NotifyArrayList<Rock> getAllPickedRocks(Context context) { 
+		NotifyArrayList<Rock> rocks = new NotifyArrayList<Rock>();
 		String where = "picked = ?";
 		String[] whereArgs = { "true" };
 		
@@ -107,8 +114,8 @@ public class Rock {
 		return rocks;
 	}
 	
-	public static ArrayList<Rock> getAllNonPickedRocks(Context context) { 
-		ArrayList<Rock> rocks = new ArrayList<Rock>();
+	public static NotifyArrayList<Rock> getAllNonPickedRocks(Context context) { 
+		NotifyArrayList<Rock> rocks = new NotifyArrayList<Rock>();
 		String where = "picked = ?";
 		String[] whereArgs = { "false" };
 		
@@ -159,6 +166,10 @@ public class Rock {
 		}
 	}
 	
+	/*
+	 * Internal method which can translate the result of the DB request (a Cursor object)
+	 * into our custom Rock object for consumption in the rest of the application
+	 */
 	private static Rock translateCursorToRock(Context context, Cursor cursor) {
 		Rock rock = new Rock(context);
 		
@@ -254,4 +265,5 @@ public class Rock {
 	public void setContext(Context context) {
 		this.context = context;
 	}
+	
 }

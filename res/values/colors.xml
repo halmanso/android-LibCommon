@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
- 	<color name="rock_selected_background">#A07DB6DB</color>
- 	<color name="rock_selected_stroke">#FF526F82</color>
+ 	<color name="rock_selected_background">#807DB6DB</color>
+ 	<color name="rock_selected_stroke">#D0526F82</color>
 </resources>

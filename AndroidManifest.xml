@@ -3,6 +3,7 @@
     android:versionCode="1"
     android:versionName="1.0">
 
-    <uses-sdk android:minSdkVersion="10" />
+    <!-- We use ActionBar items so require Android 3.0 or greater -->
+    <uses-sdk android:minSdkVersion="11" />
     
 </manifest>
