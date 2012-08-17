@@ -19,7 +19,7 @@ public class RockDB extends SQLiteOpenHelper {
 	// A tool help keep dates formated correctly in the database
 	private static SimpleDateFormat dateFormater = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 	private static final String db_name = "rocks";
-	private static final int version = 1;
+	private static final int version = 3;
 	
 	/* DB uses a singleton pattern */
 	public RockDB(Context context) {
@@ -43,7 +43,8 @@ public class RockDB extends SQLiteOpenHelper {
 				RockProvider.Constants.COMMENTS + " TEXT," +
 				RockProvider.Constants.PICTURE + " TEXT," +
 				RockProvider.Constants.UPDATE_TIME + " TEXT," +
-				RockProvider.Constants.TRELLO_PULL_TIME + " TEXT)");
+				RockProvider.Constants.TRELLO_PULL_TIME + " TEXT," + 
+				RockProvider.Constants.DELETED + " TEXT)");
 	}
 	
 	/*

@@ -1,7 +1,15 @@
 package edu.purdue.libwaterapps.view.maps;
 
+import java.util.ArrayList;
+
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.Canvas;
+import android.graphics.Point;
 import android.graphics.drawable.Drawable;
+import android.support.v4.content.LocalBroadcastManager;
 import android.view.GestureDetector;
 import android.view.GestureDetector.OnDoubleTapListener;
 import android.view.GestureDetector.OnGestureListener;
@@ -13,33 +21,40 @@ import com.google.android.maps.MapView;
 import com.google.android.maps.OverlayItem;
 
 import edu.purdue.libwaterapps.rock.Rock;
-import edu.purdue.libwaterapps.utils.NotifyArrayList;
 
 public class RockMapOverlay extends ItemizedOverlay<OverlayItem> {
-	private NotifyArrayList<Rock> rocks;
-	private Drawable pickedMarker;
-	private Drawable notPickedMarker;
-	private Rock current;
+	private Context context;
+	private ArrayList<Rock> rocks;
+	private ArrayList<Rock> rocksToShow;
+	private int selectedId;
+	private MapView mapView;
+	private int showHide;
+	private RockBroadcastReceiver rockBroadcastReceiver;
 	private GestureDetector gestureDetector = null;
 	private RockMapOverlayGestureListener gestureListener = null;
 	
-	public RockMapOverlay(NotifyArrayList<Rock> rocks, Drawable notPickedMarker, Drawable pickedMarker) {
-		super(notPickedMarker);
+	// Enums for defines of what rocks to show
+	public static final int SHOW_ALL_ROCKS = 1;
+	public static final int SHOW_NOT_PICKED_ROCKS = 2;
+	public static final int SHOW_PICKED_ROCKS = 3;
+	
+	public RockMapOverlay(Context context) {
+		super(null);
 		
-		// Make markers positioned at the image center
-		this.notPickedMarker = boundCenter(notPickedMarker);
-		this.pickedMarker = boundCenter(pickedMarker);
+		this.context = context;
 		
-		this.rocks = rocks;
-		// Update the overlay on rock changes
-		this.rocks.addOnListChangeListener(new OnListChangeListener());
+		// Get the list of rocks
+		rocks = Rock.getRocks(context);
+
+		selectedId = Rock.BLANK_ROCK_ID;
 		
-		// Start with no current rock
-		this.current = new Rock();
+		// By default show just not picked rocks
+		showHide = SHOW_NOT_PICKED_ROCKS;
 		
 		// Known work around to Android ArrayIndexOutOfBounds exception when
 		// list is empty but added to a MapView
-		this.populate();
+		setLastFocusedIndex(-1);
+		populate();
 	}
 	
 	
@@ -47,118 +62,97 @@ public class RockMapOverlay extends ItemizedOverlay<OverlayItem> {
 	 * for each OverlayItem individually to draw them */
 	@Override
 	protected OverlayItem createItem(int i) {
-		return new RockOverlayItem(rocks.get(i));
+		return new RockOverlayItem(rocksToShow.get(i));
 	}
 	
-	/* This is called by Android to get the size of the overlay list
-	 * so that it can safely call createItem() */
+	/* 
+	 * This is called by Android to get the size of the overlay list
+	 * so that it can safely call createItem() 
+	 */
 	@Override
 	public int size() {
-		return rocks.size();
+		// Build the list of rocks to show on the map. This is controlled by the showHide parameter
+		if(showHide == SHOW_ALL_ROCKS) {
+			rocksToShow = rocks;
+		} else {
+			rocksToShow = new ArrayList<Rock>();
+			for(Rock rock : rocks) {
+				switch(showHide) {
+					case SHOW_PICKED_ROCKS:
+						if(rock.isPicked()) {
+							rocksToShow.add(rock);
+						}
+						
+					break;
+					
+					default:
+					case SHOW_NOT_PICKED_ROCKS:
+						if(!rock.isPicked()) {
+							rocksToShow.add(rock);
+						}
+						
+					break;
+				}
+			}
+		}
+		
+		return rocksToShow.size();
 	}
 	
-	/* Provides the index of the overlay item which was last touched. */
+	/* 
+	 * Provides the index of the overlay item which was last touched. 
+	 */
 	@Override
 	protected boolean onTap(int i) {
-		this.current = rocks.get(i);
+		setSelected(((RockOverlayItem)getItem(i)).getRock().getId());
 		
 		return true;
 	}
 	
-	/* Stop the overlay from having shadows */
+	/*
+	 * Get notified that the map was tapped
+	 */
+	@Override
+	public boolean onTap(GeoPoint p, MapView mapView) {
+		// Make sure a overlay item was selected
+		if(!super.onTap(p, mapView)) {
+			setSelected(Rock.BLANK_ROCK_ID);
+		}
+		
+		return true;
+	}
+	
+	/* 
+	 * Stop the overlay from having shadows 
+	 */
 	@Override
 	public void	draw(Canvas canvas, MapView mapView, boolean shadow) {
+		// Store the mapView so we can force invalidates
+		this.mapView = mapView;
+		
 		if(!shadow) {
 			super.draw(canvas, mapView, shadow);
 		}
 	}
 	
 	/*
-	 * Return the current selected rock 
+	 * A overlay item gained focus. Tell the world if they are listening
 	 */
-	public Rock getCurrent() {
-		return this.current;
-	}
+	@Override
+	public void setFocus(OverlayItem item) {
+		super.setFocus(item);
+		
+		Intent intent = new Intent(Rock.ACTION_SELECTED);
+		intent.putExtra("id", selectedId);
+		LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
 	
-	/*
-	 * Return the OverlayItem for the current selected rock 
-	 */
-	public OverlayItem getCurrentOverlayItem() {
-		int i = rocks.indexOf(this.current);
-		
-		if(i >= 0) {
-			return getItem(i);
-		}
-		
-		return null; 
 	}
-	
-	/*
-	 * Set the current selected rock by index in it the rocks list
-	 */
-	public void setCurrent(int i) {
-		if(i >= 0 || i < rocks.size()) {
-			this.current = rocks.get(i); 
-		} else {
-			this.current = new Rock();
-		}
-		
-		// Make this rock the new focus
-		updateFocus();
-	}
-	
-	/*
-	 * Set the current rock by rock object
-	 */
-	public void setCurrent(Rock rock) {
-		if(rock != null) {
-			Rock internalRock = findRockById(rock.getId());
-		
-			if(internalRock != null) {
-				this.current = internalRock;
-			} else {
-				this.current = new Rock();
-			}
-		} else {
-			this.current = new Rock();
-		}
-		
-		// Make this rock the new focus
-		updateFocus(); 
-	}
-	
-	/*
-	 * Return a rock from its Rock ID
-	 */
-	private Rock findRockById(int id) {
-		for(Rock rock : rocks) {
-			if(rock.getId() == id) {
-				return rock;
-			}
-		}
-		
-		return null;
-	}
-	
-	/*
-	 * Updates the focused overlay to the current selected rock
-	 */
-	private void updateFocus() {
-		int i = rocks.indexOf(this.current);
-		
-		if(i < 0) {
-			setFocus(null);
-		} else {
-			setFocus(getItem(i));
-		}
-	}
-	
+
 	/* 
 	 * Provides the movement events so we can move rocks around 
 	 */
 	@Override
 	public boolean onTouchEvent(MotionEvent event, MapView mapView) {
-		
 		// Make the gesture detector if it does not already exist
 		if(gestureDetector == null) {
 			gestureListener = new RockMapOverlayGestureListener(mapView);
@@ -176,132 +170,233 @@ public class RockMapOverlay extends ItemizedOverlay<OverlayItem> {
 		
 		return result;
 	}
+	/*
+	
+	 * Will listen to changes in the rocks and keep the overlay update to date.
+	 * If you listen to rock changes you must stopListeningToRockChanges() in the applications onPause()
+	 */
+	public void registerListeners() {
+		if(rockBroadcastReceiver == null) {
+			rockBroadcastReceiver = new RockBroadcastReceiver();
+			
+			LocalBroadcastManager.getInstance(context).registerReceiver(rockBroadcastReceiver, new IntentFilter(Rock.ACTION_ADDED));
+			LocalBroadcastManager.getInstance(context).registerReceiver(rockBroadcastReceiver, new IntentFilter(Rock.ACTION_UPDATED));
+			LocalBroadcastManager.getInstance(context).registerReceiver(rockBroadcastReceiver, new IntentFilter(Rock.ACTION_DELETED));
+		}
+	}
+	
+	/*
+	 * Stop listening to changes in the rocks and updating the overlay automatically 
+	 */
+	public void unregisterListeners() {
+		if(rockBroadcastReceiver != null) {
+			LocalBroadcastManager.getInstance(context).unregisterReceiver(rockBroadcastReceiver);
+			
+			rockBroadcastReceiver = null;
+		}
+		
+	}
+	
+	/*
+	 * Change the current showHide setting
+	 */
+	public void setShowHide(int type) {
+		// Validate change
+		switch(type) {
+			case SHOW_ALL_ROCKS:
+			case SHOW_NOT_PICKED_ROCKS:
+			case SHOW_PICKED_ROCKS:
+				showHide = type;
+			break;
+			
+			default:
+				showHide = SHOW_ALL_ROCKS;
+			break;
+		}
+		
+		setLastFocusedIndex(-1);
+		populate();
+	}
+	
+	/*
+	 * Return the current showHide setting
+	 */
+	public int getShowHide() {
+		return showHide;
+	}
+		
+	/*
+	 * Return the selected selected rock 
+	 */
+	public Rock getSelected() {
+		return findRockById(selectedId);
+	}
+	
+	/*
+	 * Return the OverlayItem for the selected rock 
+	 */
+	public OverlayItem getSelectedOverlayItem() {
+		return getOverlayItem(getSelected());
+	}
+	
+	/*
+	 * Return the OverlayItem for the a given rock (if there is one)
+	 */
+	public OverlayItem getOverlayItem(Rock rock) {
+		int i = rocksToShow.indexOf(rock);
+		
+		if(i >= 0) {
+			return getItem(i);
+		}
+		
+		return null;
+	}
+	
+	/*
+	 * Set the selected rock by index in it the rocks list.
+	 * Set to Rock.BLACK_ROCK_ID to select no rock
+	 */
+	public void setSelected(int rockId) {
+		// Search of the rock in the list
+		int i = rocksToShow.indexOf(findRockById(rockId));
+			
+		if(i < 0) {
+			selectedId = Rock.BLANK_ROCK_ID;
+			setFocus(null);
+			
+		} else {
+			selectedId = rockId;
+			setFocus(getItem(i));
+		}
+	}
+	
+	/*
+	 * Return a rock from its Rock ID
+	 */
+	private Rock findRockById(int rockId) {
+		if(rockId >= 0 && rockId != Rock.BLANK_ROCK_ID) {
+			for(Rock rock : rocks) {
+				if(rock.getId() == rockId) {
+					return rock;
+				}
+			}
+		}
+		
+		return null;
+	}
+	
 	
 	/*
 	 * A Listener class which listens for interaction with map to delegate moving overlays around
 	 */
 	private class RockMapOverlayGestureListener implements OnGestureListener, OnDoubleTapListener {
-		MapView mapView;
-		boolean inDrag;
 		
 		RockMapOverlayGestureListener(MapView mapView) {
 			super();
-			this.mapView = mapView;
-			inDrag = false;
 		}
 
-		@Override
 		public boolean onDoubleTapEvent(MotionEvent e) {
+			return false;
+		}
+
+		/*
+		 * When a double tap is detected see if it hits the selected overlay, and if it does tell the interested world
+		 */
+		public boolean onDoubleTap(MotionEvent e) {
+			final int x = (int)e.getX();
+			final int y = (int)e.getY();
 			
-			return true;
+			// Get the selected overlay item
+			OverlayItem currentOverlay = getSelectedOverlayItem();
 			
-			/*
-			final int x=(int)e.getX();
-			final int y=(int)e.getY();
-			
-			OverlayItem currentOverlay = getCurrentOverlayItem();
-			
-			switch(e.getAction() & MotionEvent.ACTION_MASK) {
-				case MotionEvent.ACTION_DOWN:
-					if(currentOverlay != null) {
-						Point overlayPoint = new Point();
-						mapView.getProjection().toPixels(currentOverlay.getPoint(), overlayPoint);
-				
-						if(hitTest(currentOverlay, currentOverlay.getMarker(OverlayItem.ITEM_STATE_SELECTED_MASK), 
-								x-overlayPoint.x, y-overlayPoint.y)) {
-							inDrag = true;
-							FrameLayout fl = new FrameLayout(mapView.getContext());
-							fl.setLayoutParams(new FrameLayout.LayoutParams(FrameLayout.LayoutParams.FILL_PARENT, FrameLayout.LayoutParams.FILL_PARENT));
-							fl.setForegroundGravity(0x77);
-							fl.setForeground(new ColorDrawable(R.color.rock_move_background));
-							mapView.addView(fl);
-							
-							return true;
-						}
-					}
-				break;
-				
-				case MotionEvent.ACTION_MOVE:
-					if(inDrag) {
-						
-						GeoPoint pos = mapView.getProjection().fromPixels((int)e.getX(), (int)e.getY());
-						
-						Rock current = getCurrent();
-						current.setLat(pos.getLatitudeE6());
-						current.setLon(pos.getLongitudeE6());
-						current.save();
-						
-						// TODO: Remove after adding callback to rocks to update the list on rock saves
-						setLastFocusedIndex(-1);
-						populate();
-						
-						return true;
-					}
-				break;
-				
-				case MotionEvent.ACTION_UP:
-					inDrag = false;
-					return true;
+			// Make sure we found an overlay item
+			if(currentOverlay == null) {
+				return false;
 			}
 			
+			// Translate the overlay item's coordinates to screen x,y
+			Point overlayPoint = new Point();
+			mapView.getProjection().toPixels(currentOverlay.getPoint(), overlayPoint);
+			
+			// See if the double tap was on the marker or not
+			if(hitTest(currentOverlay, currentOverlay.getMarker(OverlayItem.ITEM_STATE_SELECTED_MASK), 
+						x-overlayPoint.x, y-overlayPoint.y)) {
+				
+				// Tell the interested world
+				Intent intent = new Intent(Rock.ACTION_DOUBLE_TAP);
+				intent.putExtra("id", getSelected().getId());
+				LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
+				
+				return true;
+			}
+			
+			// Do Nothing
 			return false;
-			*/
 		}
 	
 		/*
-		 * When a long press is detected, check to see if it hits the currently selected rock and if it does are the drag process
+		 * When a long press is detected see if it hits an overlay, and if it does tell the interested world
 		 */
-		@Override
 		public void onLongPress(MotionEvent e) {
+			final int x = (int)e.getX();
+			final int y = (int)e.getY();
+			
+			// Look for a rock (in all of the rocks showing) that may have been long held
+			for(Rock rock : rocksToShow) {
+				OverlayItem overlay = getOverlayItem(rock);
+				
+				// Make sure this rock as a overlay item on the screen
+				if(overlay == null) {
+					continue;
+				}
+				
+				// Translate the overlay item's coordinates to screen x,y
+				Point overlayPoint = new Point();
+				mapView.getProjection().toPixels(overlay.getPoint(), overlayPoint);
+				
+				// See if the double tap was on the marker or not
+				if(hitTest(overlay, overlay.getMarker(OverlayItem.ITEM_STATE_SELECTED_MASK), 
+							x-overlayPoint.x, y-overlayPoint.y)) {
+					
+					// Tell the interested world
+					Intent intent = new Intent(Rock.ACTION_LONG_HOLD);
+					intent.putExtra("id", rock.getId());
+					LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
+					
+					return;
+				}
+			}
 		}
 	
-		/*
-		 * When a MOVE action is fed in, check to see if we are in drag mode and if we are then move the current overlay 
-		 */
 		public boolean onMove(MotionEvent event) {
 			
 			return false;
 		}
 		
-		/*
-		 * If a Down action is observed then we are done with a drag event is there is one so end it
-		 */
-		@Override
 		public boolean onDown(MotionEvent e) {
 			return false;
 		}
 		
-		@Override
 		public boolean onScroll(MotionEvent startEvent, MotionEvent currentEvent, float dX, float dY) {
 			// Do nothing
 			return false;
 		}
 	
-		@Override
 		public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX,
 				float velocityY) {
 			// Do nothing
 			return false;
 		}
 	
-		@Override
 		public void onShowPress(MotionEvent e) {
 			// Do nothing
 		}
 	
-		@Override
 		public boolean onSingleTapUp(MotionEvent e) {
 			// Do nothing
 			return false;
 		}
 
-		@Override
-		public boolean onDoubleTap(MotionEvent e) {
-			// Do Nothing
-			return false;
-		}
-
-		@Override
 		public boolean onSingleTapConfirmed(MotionEvent e) {
 			// Do Nothing
 			return false;
@@ -328,14 +423,10 @@ public class RockMapOverlay extends ItemizedOverlay<OverlayItem> {
 			Drawable marker;
 			
 			// Choose between a picked or non-picked picture
-			if(rock.isPicked()) {
-				marker = pickedMarker;
-			} else {
-				marker = notPickedMarker;
-			}
+			marker = boundCenter(rock.getDrawable());
 			
-			// Determine if the picture should be selected or not (current or not)
-			if(current.getId() == rock.getId()) {
+			// Determine if the picture should be selected or not
+			if(selectedId == rock.getId()) {
 				OverlayItem.setState(marker, OverlayItem.ITEM_STATE_SELECTED_MASK);
 			} else {
 				OverlayItem.setState(marker, 0);
@@ -343,30 +434,89 @@ public class RockMapOverlay extends ItemizedOverlay<OverlayItem> {
 			
 			return marker;
 		}
+		
+		// Get the rock which this is an overlay item for
+		public Rock getRock() {
+			return rock;
+		}
 	}
 	
-	/*
-	 * A class which listens to changes in the rock list and updates the overlay
-	 */
-	private class OnListChangeListener implements NotifyArrayList.OnListChangeListener<Rock> {
+	
+	// Used to listen in on changes to rocks
+	private class RockBroadcastReceiver extends BroadcastReceiver {
 		@Override
-		public void onAdd(Rock rock) {
-			// Known work around to Android ArrayIndexOutOfBounds exception when
-			// list is empty but added to a MapView
-			RockMapOverlay.this.setLastFocusedIndex(-1);
+		public void onReceive(Context context, Intent intent) {
 			
-			// Update the display after changing the list
-			RockMapOverlay.this.populate();
+			boolean result = false;
+			
+			// Handle if a rock was added
+			if(intent.getAction() == Rock.ACTION_ADDED) {
+				result = handleAddRock(context, intent.getExtras().getInt("id"));
+				
+			} else if(intent.getAction() == Rock.ACTION_UPDATED) {
+				result = handleUpdatedRock(context, intent.getExtras().getInt("id"));
+				
+			} else if (intent.getAction() == Rock.ACTION_DELETED) {
+				result = handleDeletedRock(context, intent.getExtras().getInt("id"));
+				
+			}
+			
+			// Something weird happened so just lose the current list and
+			// get a new one
+			if(!result) {
+				rocks = Rock.getRocks(context);
+			}
+			
+			// Update the map view
+			setLastFocusedIndex(-1);
+			populate();
+			mapView.postInvalidate();
 		}
-
-		@Override
-		public void onRemove(Rock rock) {
-			// Known work around to Android ArrayIndexOutOfBounds exception when
-			// list is empty but added to a MapView
-			RockMapOverlay.this.setLastFocusedIndex(-1);
+		
+		// Add the new rock to the list
+		private boolean handleAddRock(Context context, int rockId) {
+			boolean result = false;
 			
-			// Update the display after changing the list
-			RockMapOverlay.this.populate();
+			Rock new_rock = Rock.getRock(context, rockId);
+			
+			// Make sure we really got a new rock
+			if(new_rock != null) {
+				rocks.add(new_rock);
+				result = true;
+			} 
+				
+			return result;
+		}
+		
+		// Update the edited rock in the list
+		private boolean handleUpdatedRock(Context context, int rockId) {
+			boolean result = false;
+			
+			Rock old_rock = findRockById(rockId);
+			Rock new_rock = Rock.getRock(context, rockId);
+			
+			// If we have both a new and old rock, then replace it
+			if(old_rock != null && new_rock != null) {
+				rocks.set(rocks.indexOf(old_rock), new_rock);
+				result = true;
+			}
+			
+			return result;
+		}
+		
+		// Remove the deleted rock from the list
+		private boolean handleDeletedRock(Context context, int rockId) {
+			boolean result = false;
+			
+			Rock old_rock = findRockById(rockId);
+			
+			// Make sure the deleted rock was in the list
+			if(old_rock != null) {
+				rocks.remove(old_rock);
+				result = true;
+			}
+			
+			return result;
 		}
 	}
 }

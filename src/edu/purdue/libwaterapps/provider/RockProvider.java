@@ -41,6 +41,7 @@ public class RockProvider extends ContentProvider {
 		public static final String PICTURE = "picture";
 		public static final String UPDATE_TIME = "update_time";
 		public static final String TRELLO_PULL_TIME = "trello_pull_time";
+		public static final String DELETED = "deleted";
 	}
 	
 	/*

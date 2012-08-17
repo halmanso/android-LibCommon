@@ -41,11 +41,11 @@ public class SlideLayout extends LinearLayout {
 	 * Called by android when inflating the view. Configures the view and
 	 * animations.
 	 */
-	public SlideLayout(final Context ctxt, AttributeSet attrs) {
-		super(ctxt, attrs);
+	public SlideLayout(final Context context, AttributeSet attrs) {
+		super(context, attrs);
 
 		// Recover an XML attribute
-		TypedArray a = ctxt.obtainStyledAttributes(attrs,
+		TypedArray a = context.obtainStyledAttributes(attrs,
 				R.styleable.SlideLayout, 0, 0);
 
 		// Get, interpret, attributes, and store them
