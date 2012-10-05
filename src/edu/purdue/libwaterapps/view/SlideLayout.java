@@ -49,7 +49,7 @@ public class SlideLayout extends LinearLayout {
 				R.styleable.SlideLayout, 0, 0);
 
 		// Get, interpret, attributes, and store them
-		speed = a.getInt(R.styleable.SlideLayout_speed, 300);
+		speed = a.getInt(R.styleable.SlideLayout_speed, 150);
 		switch (a.getInt(R.styleable.SlideLayout_slideOutDirection, 1)) {
 			case 1:
 			default:
