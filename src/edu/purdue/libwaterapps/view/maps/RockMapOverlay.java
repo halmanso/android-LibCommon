@@ -33,7 +33,7 @@ public class RockMapOverlay extends ItemizedOverlay<OverlayItem> {
 	private GestureDetector gestureDetector = null;
 	private RockMapOverlayGestureListener gestureListener = null;
 	
-	// Enums for defines of what rocks to show
+	// Defines of what rocks to show
 	public static final int SHOW_ALL_ROCKS = 1;
 	public static final int SHOW_NOT_PICKED_ROCKS = 2;
 	public static final int SHOW_PICKED_ROCKS = 3;
@@ -420,7 +420,7 @@ public class RockMapOverlay extends ItemizedOverlay<OverlayItem> {
 		 */
 		@Override  
 		public Drawable getMarker(int stateBitset) {  
-			Drawable marker;
+			Drawable marker = null;
 			
 			// Choose between a picked or non-picked picture
 			marker = boundCenter(rock.getDrawable());
@@ -484,7 +484,14 @@ public class RockMapOverlay extends ItemizedOverlay<OverlayItem> {
 				rocks.add(new_rock);
 				result = true;
 			} 
+			
+			// Update the map view
+			setLastFocusedIndex(-1);
+			populate();
+			mapView.postInvalidate();
 				
+			setSelected(new_rock.getId());
+			
 			return result;
 		}
 		

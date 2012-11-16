@@ -27,6 +27,8 @@ public class Rock {
 	private String trelloId;
 	private int lat;
 	private int lon;
+	private int origLat;
+	private int origLon;
 	private boolean picked;
 	private String comments;
 	private String picture;
@@ -34,7 +36,7 @@ public class Rock {
 	private Date trelloPullDate;
 	private boolean deleted;
 	private Context context;
-	private Drawable drawable;
+	private Drawable drawable; 
 	public static final String[] rockProjection = {
 		RockProvider.Constants._ID,
 		RockProvider.Constants.TRELLO_ID,
@@ -66,14 +68,12 @@ public class Rock {
 	 * A way to make a dummy rock. A context needs to be set if going to interact with the content provider
 	 */
 	public Rock() {
-		updateDrawable();
 	}
 	
 	public Rock(Context context) {
 		this.updateDate = new Date(0);
 		this.updateDate = new Date(0);
 		this.context = context;
-		updateDrawable();
 	}
 
 	public Rock(Context context, GeoPoint point, boolean picked) {
@@ -82,9 +82,9 @@ public class Rock {
 		this.picked = picked;
 		this.deleted = false;
 		this.context = context;
-		updateDrawable();
 	}
 	
+	// Returns a single rock located by its id
 	public static Rock getRock(Context context, int id) {
 		Rock rock = null;
 		String where = RockProvider.Constants._ID + " = ? " +
@@ -105,6 +105,7 @@ public class Rock {
 		return rock;
 	}
 	
+	// Returns all rocks in the database
 	public static ArrayList<Rock> getRocks(Context context) { 
 		ArrayList<Rock> rocks = new ArrayList<Rock>();
 		String where = "NOT " + RockProvider.Constants.DELETED;
@@ -125,6 +126,7 @@ public class Rock {
 		return rocks;
 	}
 	
+	// Returns all of the "picked" rocks in the database
 	public static ArrayList<Rock> getPickedRocks(Context context) { 
 		ArrayList<Rock> rocks = new ArrayList<Rock>();
 		String where = RockProvider.Constants.PICKED + " = ? AND NOT " + RockProvider.Constants.DELETED;
@@ -144,6 +146,7 @@ public class Rock {
 		return rocks;
 	}
 	
+	// Returns all of the "not-picked" rocks in the database
 	public static ArrayList<Rock> getNotPickedRocks(Context context) { 
 		ArrayList<Rock> rocks = new ArrayList<Rock>();
 		String where = RockProvider.Constants.PICKED + " = ? AND NOT " + RockProvider.Constants.DELETED;
@@ -193,6 +196,10 @@ public class Rock {
 		vals.put(RockProvider.Constants.UPDATE_TIME, RockDB.dateFormat(this.getUpdateDate()));
 		vals.put(RockProvider.Constants.TRELLO_PULL_TIME, "");
 		vals.put(RockProvider.Constants.DELETED, this.getDeleted());
+		
+		// Save the "current" lat and lon to the actual lat and lon, i.e. save any pending move
+		setOrigLat(this.getLat());
+		setOrigLon(this.getLon());
 		
 		if(this.id < 0) {
 			Uri uri = this.context.getContentResolver().insert(
@@ -262,7 +269,9 @@ public class Rock {
 		rock.setId(Integer.parseInt(cursor.getString(0)));
 		rock.setTrelloId(cursor.getString(1));
 		rock.setLat(cursor.getInt(2));
+		rock.setOrigLat(cursor.getInt(2));
 		rock.setLon(cursor.getInt(3));
+		rock.setOrigLon(cursor.getInt(3));
 		rock.setPicked(Boolean.parseBoolean(cursor.getString(4)));
 		rock.setComments(cursor.getString(5));
 		rock.setPicture(cursor.getString(6));
@@ -273,7 +282,7 @@ public class Rock {
 		return rock;
 	}
 	
-	private void updateDrawable() {
+	public void updateDrawable() {
 		if(picked) {
 			drawable = context.getResources().getDrawable(R.drawable.rock_picked);
 		} else {
@@ -308,7 +317,15 @@ public class Rock {
 	public void setLat(int lat) {
 		this.lat = lat;
 	}
-
+	
+	private void setOrigLat(int lat) {
+		this.origLat = lat;
+	}
+	
+	public int getOrigLat() {
+		return this.origLat;
+	}
+	
 	public int getLon() {
 		return this.lon;
 	}
@@ -316,7 +333,15 @@ public class Rock {
 	public void setLon(int lon) {
 		this.lon = lon;
 	}
-
+	
+	private void setOrigLon(int lat) {
+		this.origLon = lon;
+	}
+	
+	public int getOrigLon() {
+		return this.origLon;
+	}
+	
 	public boolean isPicked() {
 		return this.picked;
 	}
