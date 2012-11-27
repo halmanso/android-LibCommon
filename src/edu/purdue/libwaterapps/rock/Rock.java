@@ -9,13 +9,11 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
-import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Environment;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
-import com.example.libwaterapps.R;
 import com.google.android.maps.GeoPoint;
 
 import edu.purdue.libwaterapps.db.RockDB;
@@ -27,8 +25,8 @@ public class Rock {
 	private String trelloId;
 	private int lat;
 	private int lon;
-	private int origLat;
-	private int origLon;
+	private int actualLat;
+	private int actualLon;
 	private boolean picked;
 	private String comments;
 	private String picture;
@@ -36,7 +34,6 @@ public class Rock {
 	private Date trelloPullDate;
 	private boolean deleted;
 	private Context context;
-	private Drawable drawable; 
 	public static final String[] rockProjection = {
 		RockProvider.Constants._ID,
 		RockProvider.Constants.TRELLO_ID,
@@ -56,6 +53,7 @@ public class Rock {
 	public static final String ACTION_UPDATED = "edu.purdue.libwaterapps.rock.UPDATED";
 	public static final String ACTION_DELETED = "edu.purdue.libwaterapps.rock.DELETED";
 	public static final String ACTION_SELECTED = "edu.purdue.libwaterapps.rock.SELECTED";
+	public static final String ACTION_REVERT_MOVE = "edu.purdue.libwaterapps.rock.REVERT_MOVE";
 	public static final String ACTION_MOVE = "edu.purdue.libwaterapps.rock.MOVE";
 	public static final String ACTION_MOVE_DONE = "edu.purdue.libwaterapps.rock.MOVE_DONE";
 	public static final String ACTION_DOUBLE_TAP = "edu.purdue.libwaterapps.rock.DOUBLE_TAP";
@@ -78,7 +76,9 @@ public class Rock {
 
 	public Rock(Context context, GeoPoint point, boolean picked) {
 		this.lat = point.getLatitudeE6();
+		this.actualLat = this.lat;
 		this.lon = point.getLongitudeE6();
+		this.actualLon = this.lon;
 		this.picked = picked;
 		this.deleted = false;
 		this.context = context;
@@ -188,18 +188,14 @@ public class Rock {
 		
 		ContentValues vals = new ContentValues();
 		vals.put(RockProvider.Constants.TRELLO_ID, "");
-		vals.put(RockProvider.Constants.LAT, this.getLat());
-		vals.put(RockProvider.Constants.LON, this.getLon());
+		vals.put(RockProvider.Constants.LAT, this.getActualLat());
+		vals.put(RockProvider.Constants.LON, this.getActualLon());
 		vals.put(RockProvider.Constants.PICKED, Boolean.toString(this.isPicked()));
 		vals.put(RockProvider.Constants.COMMENTS, this.getComments());
 		vals.put(RockProvider.Constants.PICTURE, this.getPicture());
 		vals.put(RockProvider.Constants.UPDATE_TIME, RockDB.dateFormat(this.getUpdateDate()));
 		vals.put(RockProvider.Constants.TRELLO_PULL_TIME, "");
 		vals.put(RockProvider.Constants.DELETED, this.getDeleted());
-		
-		// Save the "current" lat and lon to the actual lat and lon, i.e. save any pending move
-		setOrigLat(this.getLat());
-		setOrigLon(this.getLon());
 		
 		if(this.id < 0) {
 			Uri uri = this.context.getContentResolver().insert(
@@ -269,9 +265,9 @@ public class Rock {
 		rock.setId(Integer.parseInt(cursor.getString(0)));
 		rock.setTrelloId(cursor.getString(1));
 		rock.setLat(cursor.getInt(2));
-		rock.setOrigLat(cursor.getInt(2));
+		rock.setActualLat(cursor.getInt(2));
 		rock.setLon(cursor.getInt(3));
-		rock.setOrigLon(cursor.getInt(3));
+		rock.setActualLon(cursor.getInt(3));
 		rock.setPicked(Boolean.parseBoolean(cursor.getString(4)));
 		rock.setComments(cursor.getString(5));
 		rock.setPicture(cursor.getString(6));
@@ -280,18 +276,6 @@ public class Rock {
 		rock.setDeleted(Boolean.parseBoolean(cursor.getString(9)));
 		
 		return rock;
-	}
-	
-	public void updateDrawable() {
-		if(picked) {
-			drawable = context.getResources().getDrawable(R.drawable.rock_picked);
-		} else {
-			drawable = context.getResources().getDrawable(R.drawable.rock_not_picked);
-		}
-	}
-	
-	public Drawable getDrawable() {
-		return drawable;
 	}
 	
 	public int getId() {
@@ -318,12 +302,12 @@ public class Rock {
 		this.lat = lat;
 	}
 	
-	private void setOrigLat(int lat) {
-		this.origLat = lat;
+	public void setActualLat(int lat) {
+		this.actualLat = lat;
 	}
 	
-	public int getOrigLat() {
-		return this.origLat;
+	public int getActualLat() {
+		return this.actualLat;
 	}
 	
 	public int getLon() {
@@ -334,12 +318,12 @@ public class Rock {
 		this.lon = lon;
 	}
 	
-	private void setOrigLon(int lat) {
-		this.origLon = lon;
+	public void setActualLon(int lat) {
+		this.actualLon = lon;
 	}
 	
-	public int getOrigLon() {
-		return this.origLon;
+	public int getActualLon() {
+		return this.actualLon;
 	}
 	
 	public boolean isPicked() {
@@ -348,7 +332,6 @@ public class Rock {
 
 	public void setPicked(boolean picked) {
 		this.picked = picked;
-		updateDrawable();
 	}
 
 	public String getComments() {

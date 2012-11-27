@@ -3,8 +3,8 @@
     android:shape="oval">
  
     <size 
-        android:width="30dp"
-        android:height="30dp" />
+        android:width="60dp"
+        android:height="60dp" />
     
     <solid
         android:color="@color/rock_selected_background" />
