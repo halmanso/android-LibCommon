@@ -1,4 +1,4 @@
-package edu.purdue.libwaterapps.note;
+package edu.purdue.libcommon.note;
 
 import java.util.ArrayList;
 
@@ -11,18 +11,18 @@ import android.util.Log;
 
 import com.google.android.maps.GeoPoint;
 
-import edu.purdue.libwaterapps.provider.NotesProvider;
-import edu.purdue.libwaterapps.provider.ObjectsProvider;
+import edu.purdue.libcommon.provider.NotesProvider;
+import edu.purdue.libcommon.provider.ObjectsProvider;
 
 /* A class which knows everything about a given rock */
 public class Object {
-	private int id = BLANK_NOTE_ID;
-	private int group;
-	private int type;
-	private ArrayList<GeoPoint> points;
-	private int notes_id;
-	private boolean deleted;
-	private Context context;
+	private int mId = BLANK_NOTE_ID;
+	private int mGroup;
+	private int mType;
+	private ArrayList<GeoPoint> mPoints;
+	private int mNotesId;
+	private boolean mDeleted;
+	private Context mContext;
 	public static final String[] fieldProjection = {
 		ObjectsProvider.Constants._ID,
 		ObjectsProvider.Constants.GROUP,
@@ -46,16 +46,16 @@ public class Object {
 	}
 	
 	public Object(Context context) {
-		this.context = context;
+		this.mContext = context;
 	}
 
 	public Object(Context context, int group,  int type, ArrayList<GeoPoint> points, int notes_id) {
-		this.group = group; 
-		this.type = type;
-		this.points = points;
-		this.notes_id = notes_id;
-		this.deleted = false;
-		this.context = context;
+		this.mGroup = group; 
+		this.mType = type;
+		this.mPoints = points;
+		this.mNotesId = notes_id;
+		this.mDeleted = false;
+		this.mContext = context;
 		
 		Log.d("GroupID", "group = " + group);
 	}
@@ -117,7 +117,7 @@ public class Object {
 	 * Default is to notify the application of the change
 	 */
 	public void save() {
-		for(GeoPoint point : points) {
+		for(GeoPoint point : mPoints) {
 			ContentValues vals = new ContentValues();
 			
 			vals.put(ObjectsProvider.Constants.GROUP, getGroup());
@@ -127,8 +127,8 @@ public class Object {
 			vals.put(ObjectsProvider.Constants.NOTES_ID, getNotes_id());
 			vals.put(ObjectsProvider.Constants.DELETED, isDeleted());
 			
-			if(this.id < 0) {
-				Uri uri = this.context.getContentResolver().insert(
+			if(this.mId < 0) {
+				Uri uri = this.mContext.getContentResolver().insert(
 						ObjectsProvider.Constants.CONTENT_URI,
 						vals);
 				
@@ -136,9 +136,9 @@ public class Object {
 				
 			} else {
 				String where = ObjectsProvider.Constants._ID + "=?";
-				String[] whereArgs = {Integer.toString(this.id)};
+				String[] whereArgs = {Integer.toString(this.mId)};
 				
-				this.context.getContentResolver().update(
+				this.mContext.getContentResolver().update(
 						ObjectsProvider.Constants.CONTENT_URI,
 						vals, where, whereArgs);
 			}
@@ -150,7 +150,7 @@ public class Object {
 	 * Default is to notify the application of the change
 	 */
 	public void delete() {
-		// The rock has not yet been saved so there is nothing to delete
+		// The object has not yet been saved so there is nothing to delete
 		if(getId() < 0) {
 			return;
 		}
@@ -190,51 +190,51 @@ public class Object {
 	}
 
 	public int getId() {
-		return id;
+		return mId;
 	}
 
 	public void setId(int id) {
-		this.id = id;
+		this.mId = id;
 	}
 
 	public int getGroup() {
-		return group;
+		return mGroup;
 	}
 
 	public void setGroup(int group) {
-		this.group = group;
+		this.mGroup = group;
 	}
 
 	public int getType() {
-		return type;
+		return mType;
 	}
 
 	public void setType(int type) {
-		this.type = type;
+		this.mType = type;
 	}
 
 	public ArrayList<GeoPoint> getPoints() {
-		return points;
+		return mPoints;
 	}
 
 	public void setPoints(ArrayList<GeoPoint> points) {
-		this.points = points;
+		this.mPoints = points;
 	}
 
 	public int getNotes_id() {
-		return notes_id;
+		return mNotesId;
 	}
 
 	public void setNotes_id(int notes_id) {
-		this.notes_id = notes_id;
+		this.mNotesId = notes_id;
 	}
 
 	public boolean isDeleted() {
-		return deleted;
+		return mDeleted;
 	}
 
 	public void setDeleted(boolean deleted) {
-		this.deleted = deleted;
+		this.mDeleted = deleted;
 	}
 	
 }

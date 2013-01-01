@@ -1,4 +1,4 @@
-package edu.purdue.libwaterapps.utils;
+package edu.purdue.libcommon.utils;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;

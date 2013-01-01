@@ -1,4 +1,4 @@
-package edu.purdue.libwaterapps.rock;
+package edu.purdue.libcommon.rock;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -16,24 +16,22 @@ import android.util.Log;
 
 import com.google.android.maps.GeoPoint;
 
-import edu.purdue.libwaterapps.db.RockDB;
-import edu.purdue.libwaterapps.provider.RockProvider;
+import edu.purdue.libcommon.db.RockDB;
+import edu.purdue.libcommon.provider.RockProvider;
 
 /* A class which knows everything about a given rock */
 public class Rock {
-	private int id = BLANK_ROCK_ID;
-	private String trelloId;
-	private int lat;
-	private int lon;
-	private int actualLat;
-	private int actualLon;
-	private boolean picked;
-	private String comments;
-	private String picture;
-	private Date updateDate; 
-	private Date trelloPullDate;
-	private boolean deleted;
-	private Context context;
+	private int mId = -1;
+	private String mTrelloId;
+	private int mLat;
+	private int mLon;
+	private boolean mPicked;
+	private String mComments;
+	private String mPicture;
+	private Date mUpdateDate; 
+	private Date mTrelloPullDate;
+	private boolean mDeleted;
+	private Context mContext;
 	public static final String[] rockProjection = {
 		RockProvider.Constants._ID,
 		RockProvider.Constants.TRELLO_ID,
@@ -47,17 +45,9 @@ public class Rock {
 		RockProvider.Constants.DELETED
 	};
 	
-	public static final int BLANK_ROCK_ID = -1; 
-	
-	public static final String ACTION_ADDED = "edu.purdue.libwaterapps.rock.ADDED";
-	public static final String ACTION_UPDATED = "edu.purdue.libwaterapps.rock.UPDATED";
-	public static final String ACTION_DELETED = "edu.purdue.libwaterapps.rock.DELETED";
-	public static final String ACTION_SELECTED = "edu.purdue.libwaterapps.rock.SELECTED";
-	public static final String ACTION_REVERT_MOVE = "edu.purdue.libwaterapps.rock.REVERT_MOVE";
-	public static final String ACTION_MOVE = "edu.purdue.libwaterapps.rock.MOVE";
-	public static final String ACTION_MOVE_DONE = "edu.purdue.libwaterapps.rock.MOVE_DONE";
-	public static final String ACTION_DOUBLE_TAP = "edu.purdue.libwaterapps.rock.DOUBLE_TAP";
-	public static final String ACTION_LONG_HOLD = "edu.purdue.libwaterapps.rock.LONG_HOLD";
+	public static final String ACTION_ADDED = "edu.purdue.libcommon.rock.ADDED";
+	public static final String ACTION_UPDATED = "edu.purdue.libcommon.rock.UPDATED";
+	public static final String ACTION_DELETED = "edu.purdue.libcommon.rock.DELETED";
 	
 	public static final String IMAGE_PATH = Environment.getExternalStorageDirectory() + "/edu.purdue.rockapp/images";
 	public static final String IMAGE_FILENAME_PATTERN = "rock_%d.png";
@@ -68,101 +58,136 @@ public class Rock {
 	public Rock() {
 	}
 	
+	/*
+	 * Make a model for a branch new rock
+	 */
 	public Rock(Context context) {
-		this.updateDate = new Date(0);
-		this.updateDate = new Date(0);
-		this.context = context;
+		this.mUpdateDate = new Date(0);
+		this.mUpdateDate = new Date(0);
+		this.mContext = context;
 	}
 
+	/*
+	 * Create model for an existing rock
+	 */
 	public Rock(Context context, GeoPoint point, boolean picked) {
-		this.lat = point.getLatitudeE6();
-		this.actualLat = this.lat;
-		this.lon = point.getLongitudeE6();
-		this.actualLon = this.lon;
-		this.picked = picked;
-		this.deleted = false;
-		this.context = context;
+		this.mLat = point.getLatitudeE6();
+		this.mLon = point.getLongitudeE6();
+		this.mPicked = picked;
+		this.mDeleted = false;
+		this.mContext = context;
 	}
 	
-	// Returns a single rock located by its id
+	/*
+	 *  Returns a single rock located by its id
+	 */
 	public static Rock getRock(Context context, int id) {
 		Rock rock = null;
+		
+		// Build query for a rock ID, do not allow one to get a deleted rock
 		String where = RockProvider.Constants._ID + " = ? " +
 					"AND NOT " + RockProvider.Constants.DELETED;
 		String[] whereArgs = { Integer.toString(id) };
 		
+		// Query the DB
 		Cursor cursor = context.getContentResolver().query(RockProvider.Constants.CONTENT_URI,
 														   Rock.rockProjection, where,
 														   whereArgs, "");
-		
+
+		// If we got a result then translate it to a rock object
 		if(cursor != null && cursor.getCount() == 1) {
 			cursor.moveToFirst();
 			rock = Rock.translateCursorToRock(context, cursor);
 		}
 		
+		// Clean up the cursor 
 		cursor.close();
 				
+		// Return the rock or null
 		return rock;
 	}
 	
-	// Returns all rocks in the database
+	/*
+	 *  Returns all rocks in the database
+	 */
 	public static ArrayList<Rock> getRocks(Context context) { 
 		ArrayList<Rock> rocks = new ArrayList<Rock>();
+		
+		// Build the query to get all rocks not deleted
 		String where = "NOT " + RockProvider.Constants.DELETED;
 		String[] whereArgs = { };
 		
+		// Query the DB
 		Cursor cursor = context.getContentResolver().query(RockProvider.Constants.CONTENT_URI,
 														   Rock.rockProjection, where, whereArgs, "");
 		
+		// Move the cursor to the first element (just in case)
 		cursor.moveToFirst();
 		while(!cursor.isAfterLast()) {
+			// Translate DB returns to rocks
 			rocks.add(Rock.translateCursorToRock(context, cursor));
 			
 			cursor.moveToNext();
 		}
 		
+		// Clean up the query
 		cursor.close();
 		
+		// Return what we found
 		return rocks;
 	}
 	
 	// Returns all of the "picked" rocks in the database
 	public static ArrayList<Rock> getPickedRocks(Context context) { 
 		ArrayList<Rock> rocks = new ArrayList<Rock>();
+		
+		// Build the query to get all not deleted picked rocks
 		String where = RockProvider.Constants.PICKED + " = ? AND NOT " + RockProvider.Constants.DELETED;
 		String[] whereArgs = { "true" };
 		
+		// Query the DB
 		Cursor cursor = context.getContentResolver().query(RockProvider.Constants.CONTENT_URI, 
 														   Rock.rockProjection, where, whereArgs, "");
 		
+		// Move the cursor to the first element (just in case)
 		cursor.moveToFirst();
 		while(!cursor.isAfterLast()) {
+			// Translate DB returns to rocks
 			rocks.add(Rock.translateCursorToRock(context, cursor));
 			cursor.moveToNext();
 		}
 		
+		// Clean up query
 		cursor.close();
 		
+		// Return what was found
 		return rocks;
 	}
 	
 	// Returns all of the "not-picked" rocks in the database
 	public static ArrayList<Rock> getNotPickedRocks(Context context) { 
 		ArrayList<Rock> rocks = new ArrayList<Rock>();
+		
+		// Build the query to get all not deleted not-picked rocks
 		String where = RockProvider.Constants.PICKED + " = ? AND NOT " + RockProvider.Constants.DELETED;
 		String[] whereArgs = { "false" };
 		
+		// Query the DB
 		Cursor cursor = context.getContentResolver().query(RockProvider.Constants.CONTENT_URI, 
 														   Rock.rockProjection, where, whereArgs, "");
-		
+	
+		// Move the cursor to the first element (just in case)
 		cursor.moveToFirst();
 		while(!cursor.isAfterLast()) {
+			// Translate DB returns to rocks
 			rocks.add(Rock.translateCursorToRock(context, cursor));
 			cursor.moveToNext();
 		}
 		
+		// CLean up query
 		cursor.close();
 		
+		// Return what was found
 		return rocks;
 	}
 	
@@ -179,7 +204,7 @@ public class Rock {
 	 * Allows caller to determine if the application show be notified of the change
 	 */
 	public void save(boolean notifyApplication) {
-		Intent actionIntent;
+		Intent intent = new Intent();
 		
 		Log.d("Rock", "Save Occured, notify = " + notifyApplication);
 		
@@ -188,8 +213,8 @@ public class Rock {
 		
 		ContentValues vals = new ContentValues();
 		vals.put(RockProvider.Constants.TRELLO_ID, "");
-		vals.put(RockProvider.Constants.LAT, this.getActualLat());
-		vals.put(RockProvider.Constants.LON, this.getActualLon());
+		vals.put(RockProvider.Constants.LAT, this.getLat());
+		vals.put(RockProvider.Constants.LON, this.getLon());
 		vals.put(RockProvider.Constants.PICKED, Boolean.toString(this.isPicked()));
 		vals.put(RockProvider.Constants.COMMENTS, this.getComments());
 		vals.put(RockProvider.Constants.PICTURE, this.getPicture());
@@ -197,30 +222,31 @@ public class Rock {
 		vals.put(RockProvider.Constants.TRELLO_PULL_TIME, "");
 		vals.put(RockProvider.Constants.DELETED, this.getDeleted());
 		
-		if(this.id < 0) {
-			Uri uri = this.context.getContentResolver().insert(
+		// Determine if we should "insert" or "update"
+		if(this.mId < 0) {
+			Uri uri = this.mContext.getContentResolver().insert(
 					RockProvider.Constants.CONTENT_URI,
 					vals);
 			
 			this.setId((int)ContentUris.parseId(uri));
 			
-			actionIntent = new Intent(Rock.ACTION_ADDED);
+			intent.setAction(Rock.ACTION_ADDED);
 			
 		} else {
 			String where = RockProvider.Constants._ID + "=?";
-			String[] whereArgs = {Integer.toString(this.id)};
+			String[] whereArgs = {Integer.toString(this.mId)};
 			
-			this.context.getContentResolver().update(
+			this.mContext.getContentResolver().update(
 					RockProvider.Constants.CONTENT_URI,
 					vals, where, whereArgs);
 			
-			actionIntent = new Intent(Rock.ACTION_UPDATED);
+			intent.setAction(Rock.ACTION_UPDATED);
 		}
 		
 		// Send a broadcast that a rock was added/updated
 		if(notifyApplication) {
-			actionIntent.putExtra("id", getId());
-			LocalBroadcastManager.getInstance(context).sendBroadcast(actionIntent);
+			intent.putExtra("id", getId());
+			LocalBroadcastManager.getInstance(mContext).sendBroadcast(intent);
 		}
 	}
 	
@@ -249,9 +275,9 @@ public class Rock {
 		save(false);
 		
 		if(notifyApplication) {
-			Intent actionIntent = new Intent(Rock.ACTION_DELETED);
-			actionIntent.putExtra("id", getId());
-			LocalBroadcastManager.getInstance(context).sendBroadcast(actionIntent);
+			Intent intent = new Intent(Rock.ACTION_DELETED);
+			intent.putExtra("id", getId());
+			LocalBroadcastManager.getInstance(mContext).sendBroadcast(intent);
 		}
 	}
 	
@@ -265,9 +291,7 @@ public class Rock {
 		rock.setId(Integer.parseInt(cursor.getString(0)));
 		rock.setTrelloId(cursor.getString(1));
 		rock.setLat(cursor.getInt(2));
-		rock.setActualLat(cursor.getInt(2));
 		rock.setLon(cursor.getInt(3));
-		rock.setActualLon(cursor.getInt(3));
 		rock.setPicked(Boolean.parseBoolean(cursor.getString(4)));
 		rock.setComments(cursor.getString(5));
 		rock.setPicture(cursor.getString(6));
@@ -279,116 +303,100 @@ public class Rock {
 	}
 	
 	public int getId() {
-		return this.id;
+		return this.mId;
 	}
 
 	public void setId(int id) {
-		this.id = id;
+		this.mId = id;
 	}
 
 	public String getTrelloId() {
-		return this.trelloId;
+		return this.mTrelloId;
 	}
 
 	public void setTrelloId(String trelloId) {
-		this.trelloId = trelloId;
+		this.mTrelloId = trelloId;
 	}
 
 	public int getLat() {
-		return this.lat;
+		return this.mLat;
 	}
 
 	public void setLat(int lat) {
-		this.lat = lat;
-	}
-	
-	public void setActualLat(int lat) {
-		this.actualLat = lat;
-	}
-	
-	public int getActualLat() {
-		return this.actualLat;
+		this.mLat = lat;
 	}
 	
 	public int getLon() {
-		return this.lon;
+		return this.mLon;
 	}
 
 	public void setLon(int lon) {
-		this.lon = lon;
-	}
-	
-	public void setActualLon(int lat) {
-		this.actualLon = lon;
-	}
-	
-	public int getActualLon() {
-		return this.actualLon;
+		this.mLon = lon;
 	}
 	
 	public boolean isPicked() {
-		return this.picked;
+		return this.mPicked;
 	}
 
 	public void setPicked(boolean picked) {
-		this.picked = picked;
+		this.mPicked = picked;
 	}
 
 	public String getComments() {
-		return this.comments;
+		return this.mComments;
 	}
 
 	public void setComments(String comments) {
-		this.comments = comments;
+		this.mComments = comments;
 	}
 
 	public String getPicture() {
-		return this.picture;
+		return this.mPicture;
 	}
 
 	public void setPicture(String picture) {
-		this.picture = picture;
+		this.mPicture = picture;
 	}
 	
 	public void deletePicture() {
-		if(picture != null) {
-			File pic = new File(picture);
+		deletePicture(true);
+	}
+	
+	public void deletePicture(boolean notifyApplication) {
+		if(mPicture != null) {
+			File pic = new File(mPicture);
 			pic.delete();
 			
-			picture = null;
-			save();
+			mPicture = null;
+			save(notifyApplication);
 		}
 	}
 
 	public Date getUpdateDate() {
-		return this.updateDate;
+		return this.mUpdateDate;
 	}
 
 	public void setUpdateDate(Date updateDate) {
-		this.updateDate = updateDate;
+		this.mUpdateDate = updateDate;
 	}
 
 	public Date getTrelloPullDate() {
-		return this.trelloPullDate;
+		return this.mTrelloPullDate;
 	}
 
 	public void setTrelloPullDate(Date trelloPullDate) {
-		this.trelloPullDate = trelloPullDate;
+		this.mTrelloPullDate = trelloPullDate;
 	}
 	
 	public Context getContext() {
-		return this.context;
-	}
-	
-	public void setContext(Context context) {
-		this.context = context;
+		return this.mContext;
 	}
 	
 	public boolean getDeleted() {
-		return this.deleted;
+		return this.mDeleted;
 	}
 	
 	public void setDeleted(boolean deleted) {
-		this.deleted = deleted;
+		this.mDeleted = deleted;
 	}
 }

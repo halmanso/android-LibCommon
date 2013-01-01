@@ -1,4 +1,4 @@
-package edu.purdue.libwaterapps.view.maps;
+package edu.purdue.libcommon.view.maps;
 
 import java.util.ArrayList;
 
@@ -19,17 +19,17 @@ import android.graphics.drawable.Drawable;
 import android.support.v4.content.LocalBroadcastManager;
 import android.view.MotionEvent;
 
-import com.example.libwaterapps.R;
+import com.example.libcommon.R;
 import com.google.android.maps.GeoPoint;
 import com.google.android.maps.MapView;
 import com.google.android.maps.Overlay;
 import com.google.android.maps.Projection;
 
-import edu.purdue.libwaterapps.rock.Rock;
+import edu.purdue.libcommon.rock.Rock;
+import edu.purdue.libcommon.utils.MapPosition;
 
 public class RockMapOverlay extends Overlay {
 	private MapView mMapView;
-	private Rock mSelectedRock;
 	private Bitmap mUp;
 	private Bitmap mDown;
 	private Bitmap mUpDown;
@@ -37,24 +37,33 @@ public class RockMapOverlay extends Overlay {
 	private Bitmap mSelected;
 	private ArrayList<Rock> mRocks;
 	private ArrayList<RockMapGroup> mRockGroups;
-	private GeoPoint mLastMapCenter;
-	private int mLastLonSpan;
-	private int mLastLatSpan;
+	private MapPosition mLastMapPosition;
+	
+	private int mSelectedRockId;
+	private int mSelectedRockLat;
+	private int mSelectedRockLon;
 	
 	private int mShowHide; 
 	
 	private int movePointerId;
 	private boolean mMoveInAction = false;
 	private boolean mMoveFreely = false;
+	private boolean mDragging = false; 
 	
 	private Context mContext;
-	private RockBroadcastReceiver mRockBroadcastReceiver;
+	private LocalBroadcastReceiver mLocalBroadcastReceiver;
 	
 	public static final int SHOW_ALL_ROCKS = 1;
 	public static final int SHOW_NOT_PICKED_ROCKS = 2;
 	public static final int SHOW_PICKED_ROCKS = 3;
 
-	private static final int DRAG_DEAD_ZONE = 50;
+	private static final int DRAG_DEAD_ZONE = 75;
+	private static final int SHADOW_OFFSET_X = 10;
+	private static final int SHADOW_OFFSET_Y = 10;
+	
+	public static final String ACTION_GROUP_SELECTED = "edu.purdue.libcommon.view.maps.GROUP_SELECTED";
+	public static final String ACTION_ROCK_SELECTED = "edu.purdue.libcommon.view.maps.ROCK_SELECTED";
+	public static final String ACTION_REVERT_MOVE = "edu.purdue.libcommon.view.maps.REVERT_MOVE";
 	
 	/*
 	 * Create a Overlay for a Google Map which knows how to display 
@@ -113,12 +122,10 @@ public class RockMapOverlay extends Overlay {
 		mRocks = Rock.getRocks(context);
 		
 		// Start with no selected rock
-		mSelectedRock = new Rock();
+		mSelectedRockId = -1;
 		
 		// Initialize the last map position
-		mLastMapCenter = new GeoPoint(0,0);
-		mLastLonSpan = -1;
-		mLastLatSpan = -1;
+		mLastMapPosition = new MapPosition(); 
 		
 		// Initialize the default show hide
 		mShowHide = SHOW_NOT_PICKED_ROCKS;
@@ -129,8 +136,7 @@ public class RockMapOverlay extends Overlay {
 		super.draw(canvas, mapView, shadow);
 		
 		// See if we have no groupings or if the map has moved and so we need to (re)filter and group rocks
-		if(mRockGroups == null || mapView.getLatitudeSpan() != mLastLatSpan || mapView.getLongitudeSpan() != mLastLonSpan ||
-				!mapView.getMapCenter().equals(mLastMapCenter)) {
+		if(mRockGroups == null || mLastMapPosition.hasMoved(mapView)) {
 			filterAndGroupRocks(mapView);
 		}
 		 
@@ -143,29 +149,31 @@ public class RockMapOverlay extends Overlay {
 		}
 		
 		// Draw the selected rock last. It is never part of mRockGroups
-		if(mSelectedRock.getId() != Rock.BLANK_ROCK_ID) { 
-			RockMapGroup group = new RockMapGroup(mSelectedRock);
-			mapView.getProjection().toPixels(new GeoPoint(group.getAvgLat(), group.getAvgLon()), p);
+		if(mSelectedRockId > 0) { 
+			RockMapGroup group = new RockMapGroup(Rock.getRock(mContext, mSelectedRockId));
+			mapView.getProjection().toPixels(new GeoPoint(mSelectedRockLat, mSelectedRockLon), p);
 			drawGroup(group, p, canvas, shadow);
 		}
-		
 	}
 	
 	// Helper function which knows the details of drawing a group 
 	private void drawGroup(RockMapGroup group, Point p, Canvas canvas, boolean shadow) {
 		if(shadow) {
 			// Draw the shadow first so that its on the bottom
-			canvas.drawBitmap(mShadow, p.x - mShadow.getWidth()/2 + 10, p.y - mShadow.getHeight()/2+10, null);
+			canvas.drawBitmap(mShadow, p.x - mShadow.getWidth()/2 + SHADOW_OFFSET_X, p.y - mShadow.getHeight()/2 + SHADOW_OFFSET_Y, null);
 		} else {
 			// Draw the actual rock icons (or rock group icons)
 			// If this rock is selected then draw the select bubble
-			if(mSelectedRock.getId() == group.getAll().get(0).getId()) {
-				canvas.drawBitmap(mSelected, p.x - mSelected.getWidth()/2, p.y - mSelected.getHeight()/2, null);
+			if(group.size() == 1) {
+				Rock rock = group.getAll().get(0);
+				if(rock != null && mSelectedRockId == rock.getId()) {
+					canvas.drawBitmap(mSelected, p.x - mSelected.getWidth()/2, p.y - mSelected.getHeight()/2, null);
+				}
 			}
 			
 			// Determine what the make up of the group is
 			Bitmap marker;
-			switch(group.getGroupPicked()) {
+			switch(group.getGroupStatus()) {
 				case RockMapGroup.ROCK_MAP_GROUP_BOTH:
 					marker = mUpDown;
 				break;
@@ -211,6 +219,9 @@ public class RockMapOverlay extends Overlay {
 		
 		switch(e.getAction()) {
 			case MotionEvent.ACTION_MOVE:
+				// This is not a tap, there was a drag motion
+				mDragging = true;
+				
 				// See if we got a "move" for a finger we were tracking
 				int idx = e.findPointerIndex(movePointerId);
 				if(mMoveInAction && idx != -1) {
@@ -219,12 +230,12 @@ public class RockMapOverlay extends Overlay {
 					if(mMoveFreely) {
 						GeoPoint gp = mapView.getProjection().fromPixels((int)e.getX(idx), (int)e.getY(idx));
 						
-						mSelectedRock.setLat(gp.getLatitudeE6());
-						mSelectedRock.setLon(gp.getLongitudeE6());
+						mSelectedRockLat = gp.getLatitudeE6();
+						mSelectedRockLon = gp.getLongitudeE6();
 						
 						// Otherwise see if we should start a move yet
 					} else {
-						Point p = mapView.getProjection().toPixels(new GeoPoint(mSelectedRock.getLat(), mSelectedRock.getLon()), null);
+						Point p = mapView.getProjection().toPixels(new GeoPoint(mSelectedRockLat, mSelectedRockLon), null);
 						if(Math.hypot(p.x - e.getX(), p.y - e.getY()) > DRAG_DEAD_ZONE) {
 							mMoveFreely = true;
 						}
@@ -232,21 +243,19 @@ public class RockMapOverlay extends Overlay {
 					
 					return true;
 				}
-				
-				// Stop moving the map if there is a "drag" when selecting a rock
-				if(!mMoveInAction && mSelectedRock.getId() != Rock.BLANK_ROCK_ID) {
-					return true;
-				}
 			break;
 			
 			case MotionEvent.ACTION_DOWN:
+				// Starting a new touch, not sure if its a drag yet or not
+				mDragging = false;
+				
 				// Look for a rock which we pushed down on 
 				Point p = new Point();
 				RectF markerBoundary = new RectF(0, 0, mSelected.getWidth(), mSelected.getHeight());
 	
 				// First test to see if we reselected the selected rock
-				if(mSelectedRock.getId() != Rock.BLANK_ROCK_ID) {
-					mapView.getProjection().toPixels(new GeoPoint(mSelectedRock.getLat(), mSelectedRock.getLon()), p);
+				if(mSelectedRockId > 0) {
+					mapView.getProjection().toPixels(new GeoPoint(mSelectedRockLat, mSelectedRockLon), p);
 					markerBoundary.offsetTo(p.x, p.y);
 					markerBoundary.offset(-mDown.getWidth()/2, -mDown.getHeight()/2);
 					
@@ -259,6 +268,7 @@ public class RockMapOverlay extends Overlay {
 					}
 				}
 				
+				// Otherwise see if we picked any of the rocks
 				markerBoundary = new RectF(0, 0, mDown.getWidth(), mDown.getHeight());
 				
 				for(RockMapGroup group : mRockGroups) {
@@ -268,12 +278,14 @@ public class RockMapOverlay extends Overlay {
 					markerBoundary.offset(-mDown.getWidth()/2, -mDown.getHeight()/2);
 					
 					if(markerBoundary.contains(e.getX(), e.getY())) {
-						if(mSelectedRock.getId() != Rock.BLANK_ROCK_ID) {
+						// Save the rock which was selected before
+						if(mSelectedRockId > 0) {
 							// Save the current one 
 							// First we need to commit to these new lat and lon
-							mSelectedRock.setActualLat(mSelectedRock.getLat());
-							mSelectedRock.setActualLon(mSelectedRock.getLon());
-							mSelectedRock.save();
+							Rock rock = Rock.getRock(mContext, mSelectedRockId);
+							rock.setLat(mSelectedRockLat);
+							rock.setLon(mSelectedRockLon);
+							rock.save();
 						}
 						
 						// Send out a group select broadcast if we selected one
@@ -282,10 +294,13 @@ public class RockMapOverlay extends Overlay {
 							// If we are at the highest zoom level then just select the top
 							// on of the group so that you can at least work with it
 							if(mapView.getZoomLevel() == 21) {
-								setSelected(group.getAll().get(0));
+								Rock rock = group.getAll().get(0);
+								if(rock != null) {
+									setSelected(rock.getId());
+								}
 							} else {
 								// Send a broadcast to who ever cares that the user selected a group
-								Intent intent = new Intent(RockMapGroup.ACTION_GROUP_SELECTED);
+								Intent intent = new Intent(ACTION_GROUP_SELECTED);
 								intent.putExtra("lat", group.getAvgLat());
 								intent.putExtra("lon", group.getAvgLon());
 								intent.putExtra("lat-span", group.getLatSpan());
@@ -293,28 +308,35 @@ public class RockMapOverlay extends Overlay {
 								LocalBroadcastManager.getInstance(mContext).sendBroadcast(intent);
 								
 								// We do not know what to select so we do not select anything
-								setSelected(new Rock());
+								setSelected(-1);
 							}
 						} else {
 							// We selected a single rock so we select that
-							setSelected(group.getAll().get(0));
+							Rock rock = group.getAll().get(0);
+							if(rock != null) {
+								setSelected(rock.getId());
+							}	
+							
+							// We just selected the rock so act as if we are dragging it
+							mDragging = true;
 						}
 						
 						return true;
 					}
 				}
-				
-				// We push down somewhere else and we have a currently selected rock, de-select it
-				if(mSelectedRock.getId() != Rock.BLANK_ROCK_ID) {
-					mSelectedRock.setActualLat(mSelectedRock.getLat());
-					mSelectedRock.setActualLon(mSelectedRock.getLon());
-					mSelectedRock.save();
-					
-					setSelected(new Rock());
-				}
 			break;
 			
 			case MotionEvent.ACTION_UP:
+				// We pushed down somewhere else (without dragging) and we have a currently selected rock, cancel the selection
+				if(mSelectedRockId > 0 && !mDragging) {
+					Rock rock = Rock.getRock(mContext, mSelectedRockId);
+					rock.setLat(mSelectedRockLat);
+					rock.setLon(mSelectedRockLon);
+					rock.save();
+					
+					setSelected(-1);
+				}
+				
 				// No matter what lifting your finger ends any current moves
 				mMoveInAction = false;
 				mMoveFreely = false;
@@ -349,24 +371,20 @@ public class RockMapOverlay extends Overlay {
 	
 	// Mark a rock as "selected"
 	public void setSelected(int id) {
-		
-		// Find and save the rock object, defaults to nothing selected if id is not found
-		setSelected(findRockById(id));
-	}
-	
-	public void setSelected(Rock rock) { 
 		// Save the rock object
-		mSelectedRock = rock;
+		mSelectedRockId = id;
 		
 		// Tell the world 
-		Intent intent = new Intent(Rock.ACTION_SELECTED);
-		intent.putExtra("id", mSelectedRock.getId());
+		Intent intent = new Intent(ACTION_ROCK_SELECTED);
+		intent.putExtra("id", mSelectedRockId);
 		LocalBroadcastManager.getInstance(mContext).sendBroadcast(intent);
 		
-		// Put this rock at the end of the list so the next selection (if its a group which is too close
-		// even for the lowest zoom level) gets a new rock
-		mRocks.remove(rock);
-		mRocks.add(rock);
+		// Store the original location of the rock for later when rendering
+		Rock rock = getSelected();
+		if(rock != null) {
+			mSelectedRockLat = rock.getLat();
+			mSelectedRockLon = rock.getLon();
+		}
 		
 		// Force a re-group
 		mRockGroups = null;
@@ -375,18 +393,18 @@ public class RockMapOverlay extends Overlay {
 	
 	// Return the currently selected rock
 	public Rock getSelected() {
-		return mSelectedRock;
+		return Rock.getRock(mContext, mSelectedRockId);
 	}
 	
 	// Start listening to changes in rocks so we can stay up to date
 	public void registerListeners() {
-		if(mRockBroadcastReceiver == null) {
-			mRockBroadcastReceiver = new RockBroadcastReceiver();
+		if(mLocalBroadcastReceiver == null) {
+			mLocalBroadcastReceiver = new LocalBroadcastReceiver();
 			
-			LocalBroadcastManager.getInstance(mContext).registerReceiver(mRockBroadcastReceiver, new IntentFilter(Rock.ACTION_ADDED));
-			LocalBroadcastManager.getInstance(mContext).registerReceiver(mRockBroadcastReceiver, new IntentFilter(Rock.ACTION_UPDATED));
-			LocalBroadcastManager.getInstance(mContext).registerReceiver(mRockBroadcastReceiver, new IntentFilter(Rock.ACTION_DELETED));
-			LocalBroadcastManager.getInstance(mContext).registerReceiver(mRockBroadcastReceiver, new IntentFilter(Rock.ACTION_REVERT_MOVE));
+			LocalBroadcastManager.getInstance(mContext).registerReceiver(mLocalBroadcastReceiver, new IntentFilter(Rock.ACTION_ADDED));
+			LocalBroadcastManager.getInstance(mContext).registerReceiver(mLocalBroadcastReceiver, new IntentFilter(Rock.ACTION_UPDATED));
+			LocalBroadcastManager.getInstance(mContext).registerReceiver(mLocalBroadcastReceiver, new IntentFilter(Rock.ACTION_DELETED));
+			LocalBroadcastManager.getInstance(mContext).registerReceiver(mLocalBroadcastReceiver, new IntentFilter(ACTION_REVERT_MOVE));
 			
 			// Refresh our rock list because we might have missed messages when it was off
 			mRocks = Rock.getRocks(mContext);
@@ -397,10 +415,10 @@ public class RockMapOverlay extends Overlay {
 	
 	// Stop listening to changes in rocks
 	public void unregisterListeners() {
-		if(mRockBroadcastReceiver != null) {
-			LocalBroadcastManager.getInstance(mContext).unregisterReceiver(mRockBroadcastReceiver);
+		if(mLocalBroadcastReceiver != null) {
+			LocalBroadcastManager.getInstance(mContext).unregisterReceiver(mLocalBroadcastReceiver);
 			
-			mRockBroadcastReceiver = null;
+			mLocalBroadcastReceiver = null;
 		}
 	}
 	
@@ -444,11 +462,6 @@ public class RockMapOverlay extends Overlay {
 				continue;
 			}
 			
-			// Make sure it is not the currently selected rock
-			if(mSelectedRock.getId() == rock.getId()) {
-				continue;
-			}
-			
 			// Filter out rocks which are picked when only showing not picked rocks
 			if(mShowHide == SHOW_NOT_PICKED_ROCKS && rock.isPicked()) {
 				continue;
@@ -456,6 +469,11 @@ public class RockMapOverlay extends Overlay {
 			
 			// Filter out rocks which are not picked when only showing picked rocks
 			if(mShowHide == SHOW_PICKED_ROCKS && !rock.isPicked()) {
+				continue;
+			}
+			
+			// Make sure it is not the currently selected rock
+			if(mSelectedRockId == rock.getId()) {
 				continue;
 			}
 			
@@ -469,10 +487,9 @@ public class RockMapOverlay extends Overlay {
 	}
 	
 	// Used to listen in on changes to rocks
-	private class RockBroadcastReceiver extends BroadcastReceiver {
+	private class LocalBroadcastReceiver extends BroadcastReceiver {
 		@Override
 		public void onReceive(Context context, Intent intent) {
-			
 			boolean result = false;
 			
 			// Handle if a rock was added
@@ -485,7 +502,7 @@ public class RockMapOverlay extends Overlay {
 			} else if (intent.getAction() == Rock.ACTION_DELETED) {
 				result = handleDeletedRock(context, intent.getExtras().getInt("id"));
 				
-			} else if (intent.getAction() == Rock.ACTION_REVERT_MOVE) {
+			} else if (intent.getAction() == ACTION_REVERT_MOVE) {
 				result = handleRevertMove(context);
 			}
 			
@@ -529,26 +546,21 @@ public class RockMapOverlay extends Overlay {
 			Rock old_rock = findRockById(rockId);
 			Rock new_rock = Rock.getRock(context, rockId);
 			
-			// Update the mSelectedRock if the selected rock was the updated one
-			if(mSelectedRock.getId() == rockId) {
-				mSelectedRock = new_rock;
-			}
-			
 			// If we have both a new and old rock, then replace it
-			if(old_rock.getId() != Rock.BLANK_ROCK_ID && new_rock != null) {
+			if(old_rock.getId() > 0 && new_rock != null) {
 				mRocks.set(mRocks.indexOf(old_rock), new_rock);
 				result = true;
 			}
 			
-			if(new_rock != null) {
+			if(new_rock != null && new_rock.getId() == mSelectedRockId) {
 				// do not display rocks which are not in view because of being picked up
 				if(new_rock.isPicked() && mShowHide == SHOW_NOT_PICKED_ROCKS) {
-					setSelected(new Rock());
+					setSelected(-1);
 				}
 				
 				// do not display rocks which are not in view because of not being picked up
 				if(!new_rock.isPicked() && mShowHide == SHOW_PICKED_ROCKS) {
-					setSelected(new Rock());
+					setSelected(-1);
 				}
 			}
 			
@@ -566,12 +578,12 @@ public class RockMapOverlay extends Overlay {
 			Rock old_rock = findRockById(rockId);
 			
 			// See if the rocked that was deleted is the currently selected rock
-			if(old_rock.getId() == mSelectedRock.getId()) {
-				setSelected(new Rock());
+			if(old_rock.getId() == mSelectedRockId) {
+				setSelected(-1);
 			}
 			
 			// Make sure the deleted rock was in the list
-			if(old_rock.getId() != Rock.BLANK_ROCK_ID) {
+			if(old_rock.getId() > 0) {
 				mRocks.remove(old_rock);
 				result = true;
 			}
@@ -583,18 +595,15 @@ public class RockMapOverlay extends Overlay {
 			return result;
 		}
 		
-		// Revert the last move and if there is not one to revert de select the rock
+		// Revert the last move and if there is not one to revert cancel the current rock selection
 		private boolean handleRevertMove(Context context) {
-			if(mSelectedRock.getId() == Rock.BLANK_ROCK_ID) {
-				setSelected(new Rock());
+			Rock rock = getSelected();
+			
+			if(rock != null && (rock.getLat() != mSelectedRockLat || rock.getLon() != mSelectedRockLon)) {
+				mSelectedRockLat = rock.getLat();
+				mSelectedRockLon = rock.getLon();
 			} else {
-				if(mSelectedRock.getActualLat() != mSelectedRock.getLat() ||
-					mSelectedRock.getActualLon() != mSelectedRock.getLon()) {
-					mSelectedRock.setLat(mSelectedRock.getActualLat());
-					mSelectedRock.setLon(mSelectedRock.getActualLon());
-				} else {
-					setSelected(new Rock());
-				}
+				setSelected(-1);
 			}
 			
 			return true;

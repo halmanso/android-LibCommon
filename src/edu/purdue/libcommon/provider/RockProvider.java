@@ -1,4 +1,4 @@
-package edu.purdue.libwaterapps.provider;
+package edu.purdue.libcommon.provider;
 
 import android.content.ContentProvider;
 import android.content.ContentUris;
@@ -10,17 +10,17 @@ import android.database.sqlite.SQLiteQueryBuilder;
 import android.net.Uri;
 import android.provider.BaseColumns;
 import android.text.TextUtils;
-import edu.purdue.libwaterapps.db.RockDB;
+import edu.purdue.libcommon.db.RockDB;
 
 /*
  * The provider which manages the "rocks"
  * 
  * This should not be used directly but rather
- * accessed via the LibWaterApps Rock class.
+ * accessed via the LibCommon Rock class.
  */
 public class RockProvider extends ContentProvider {
 	
-	private RockDB db;
+	private RockDB mDb;
 	private static final UriMatcher MATCHER;
 	private static final int ROCKS = 1;
 	private static final int ROCKS_ID = 2;
@@ -29,7 +29,7 @@ public class RockProvider extends ContentProvider {
 	 * These are the constants which identifies the provider and its data
 	 */
 	public static final class Constants implements BaseColumns {
-		public static final String AUTHORITY = "edu.purdue.libwaterapps.provider";
+		public static final String AUTHORITY = "edu.purdue.libcommon.provider";
 		public static final Uri CONTENT_URI = Uri.parse("content://" + AUTHORITY + "/rocks");
 		public static final String TABLE="rocks";
 		public static final String DEFAULT_SORT_ORDER="_id";
@@ -49,8 +49,8 @@ public class RockProvider extends ContentProvider {
 	 */
 	static {
 		MATCHER=new UriMatcher(UriMatcher.NO_MATCH);
-		MATCHER.addURI("edu.purdue.libwaterapps.RockProvider", "rocks", ROCKS);
-		MATCHER.addURI("edu.prudue.libwaterapps.RockProvider", "rocks/#", ROCKS_ID);
+		MATCHER.addURI("edu.purdue.libcommon.RockProvider", "rocks", ROCKS);
+		MATCHER.addURI("edu.prudue.libcommon.RockProvider", "rocks/#", ROCKS_ID);
 	}
 	
 	/*
@@ -63,9 +63,9 @@ public class RockProvider extends ContentProvider {
 		/* Get hold of the rock DB
 		 * This is fast because RockDB will hold off working with the DB until it is used
 		 */
-		db=new RockDB(getContext());
+		mDb=new RockDB(getContext());
 		
-		return ((db == null) ? false : true);
+		return ((mDb == null) ? false : true);
 	}
 	
 	/*
@@ -76,11 +76,11 @@ public class RockProvider extends ContentProvider {
 		String type;
 		switch(MATCHER.match(url)) {
 			case ROCKS:
-				type = "vnd.libwaterapps.cursor.dir/constant";
+				type = "vnd.libcommon.cursor.dir/constant";
 			break;
 			
 			default:
-				type = "vnd.libwaterapps.cursor.item/constant";
+				type = "vnd.libcommon.cursor.item/constant";
 			break;
 		}
 		
@@ -105,7 +105,7 @@ public class RockProvider extends ContentProvider {
 			orderBy=sort;
 		}
 		
-		Cursor c = qb.query(db.getReadableDatabase(), projection, selection, selectionArgs,
+		Cursor c = qb.query(mDb.getReadableDatabase(), projection, selection, selectionArgs,
 				null, null, orderBy);
 	
 		return c;
@@ -116,7 +116,7 @@ public class RockProvider extends ContentProvider {
 	 */
 	@Override
 	public Uri insert(Uri url, ContentValues initialValues) {
-		long rowID = db.getWritableDatabase().insert(Constants.TABLE, Constants._ID, initialValues);
+		long rowID = mDb.getWritableDatabase().insert(Constants.TABLE, Constants._ID, initialValues);
 		
 		// If we got a rowID, get the URI and tell the world
 		if(rowID > 0) {
@@ -136,7 +136,7 @@ public class RockProvider extends ContentProvider {
 	 */
 	@Override
 	public int update(Uri url, ContentValues values, String where, String[] whereArgs) {
-		int count=db.getWritableDatabase().update(Constants.TABLE, values, where, whereArgs);
+		int count=mDb.getWritableDatabase().update(Constants.TABLE, values, where, whereArgs);
 		
 		// Tell the world of the update
 		getContext().getContentResolver().notifyChange(url, null);
@@ -149,7 +149,7 @@ public class RockProvider extends ContentProvider {
 	 */
 	@Override
 	public int delete(Uri url, String where, String[] whereArgs) {
-		int count=db.getWritableDatabase().delete(Constants.TABLE, where, whereArgs);
+		int count=mDb.getWritableDatabase().delete(Constants.TABLE, where, whereArgs);
 		
 		// Tell the world of the delete
 		getContext().getContentResolver().notifyChange(url, null);

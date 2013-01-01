@@ -1,4 +1,4 @@
-package edu.purdue.libwaterapps.db;
+package edu.purdue.libcommon.db;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -9,7 +9,7 @@ import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
-import edu.purdue.libwaterapps.provider.RockProvider;
+import edu.purdue.libcommon.provider.RockProvider;
 
 /*
  * Manages the SQLite database for the RockProvider
@@ -17,16 +17,16 @@ import edu.purdue.libwaterapps.provider.RockProvider;
  */
 public class RockDB extends SQLiteOpenHelper {
 	// A tool help keep dates formated correctly in the database
-	private static SimpleDateFormat dateFormater = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-	private static final String db_name = "rocks";
-	private static final int version = 3;
+	private static SimpleDateFormat mDateFormater = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+	private static final String mDbName = "rocks";
+	private static final int mVersion = 3;
 	
 	/* DB uses a singleton pattern */
 	public RockDB(Context context) {
-		super(context, db_name, null, version);
+		super(context, mDbName, null, mVersion);
 		
 		// We always store and use UTC time
-		dateFormater.setTimeZone(TimeZone.getTimeZone("UTC"));
+		mDateFormater.setTimeZone(TimeZone.getTimeZone("UTC"));
 	}
 	
 	/*
@@ -64,7 +64,7 @@ public class RockDB extends SQLiteOpenHelper {
 	 * Takes in a date and returns it in a string format
 	 */
 	public static String dateFormat(Date date) {
-		return RockDB.dateFormater.format(date);
+		return RockDB.mDateFormater.format(date);
 	}
 	
 	/*
@@ -75,7 +75,7 @@ public class RockDB extends SQLiteOpenHelper {
 		Date d;
 		
 		try {
-			d = RockDB.dateFormater.parse(date);
+			d = RockDB.mDateFormater.parse(date);
 		} catch (ParseException e) {
 			d = new Date(0);
 		}

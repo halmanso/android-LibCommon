@@ -1,4 +1,4 @@
-package edu.purdue.libwaterapps.note;
+package edu.purdue.libcommon.note;
 
 import java.util.ArrayList;
 
@@ -7,16 +7,16 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
-import edu.purdue.libwaterapps.provider.NotesProvider;
-import edu.purdue.libwaterapps.provider.RockProvider;
+import edu.purdue.libcommon.provider.NotesProvider;
+import edu.purdue.libcommon.provider.RockProvider;
 
 /* A class which knows everything about a given rock */
 public class Note {
-	private int id = BLANK_NOTE_ID;
-	private int color;
-	private String comments;
-	private boolean deleted;
-	private Context context;
+	private int mId = BLANK_NOTE_ID;
+	private int mColor;
+	private String mComments;
+	private boolean mDeleted;
+	private Context mContext;
 	public static final String[] fieldProjection = {
 		NotesProvider.Constants._ID,
 		NotesProvider.Constants.COLOR,
@@ -33,14 +33,14 @@ public class Note {
 	}
 	
 	public Note(Context context) {
-		this.context = context;
+		this.mContext = context;
 	}
 
 	public Note(Context context, int color, String comments) {
-		this.color = color;
-		this.comments = comments;
-		this.deleted = false;
-		this.context = context;
+		this.mColor = color;
+		this.mComments = comments;
+		this.mDeleted = false;
+		this.mContext = context;
 	}
 	
 	public static Note getNote(Context context, int id) {
@@ -93,8 +93,8 @@ public class Note {
 		vals.put(NotesProvider.Constants.COMMENTS, this.getComments());
 		vals.put(NotesProvider.Constants.DELETED, this.isDeleted());
 		
-		if(this.id < 0) {
-			Uri uri = this.context.getContentResolver().insert(
+		if(this.mId < 0) {
+			Uri uri = this.mContext.getContentResolver().insert(
 					NotesProvider.Constants.CONTENT_URI,
 					vals);
 			
@@ -102,9 +102,9 @@ public class Note {
 			
 		} else {
 			String where = RockProvider.Constants._ID + "=?";
-			String[] whereArgs = {Integer.toString(this.id)};
+			String[] whereArgs = {Integer.toString(this.mId)};
 			
-			this.context.getContentResolver().update(
+			this.mContext.getContentResolver().update(
 					NotesProvider.Constants.CONTENT_URI,
 					vals, where, whereArgs);
 		}
@@ -115,7 +115,7 @@ public class Note {
 	 * Default is to notify the application of the change
 	 */
 	public void delete() {
-		// The rock has not yet been saved so there is nothing to delete
+		// The note has not yet been saved so there is nothing to delete
 		if(getId() < 0) {
 			return;
 		}
@@ -143,34 +143,34 @@ public class Note {
 	}
 	
 	public int getId() {
-		return id;
+		return mId;
 	}
 
 	public void setId(int id) {
-		this.id = id;
+		this.mId = id;
 	}
 
 	public int getColor() {
-		return color;
+		return mColor;
 	}
 
 	public void setColor(int color) {
-		this.color = color;
+		this.mColor = color;
 	}
 
 	public String getComments() {
-		return comments;
+		return mComments;
 	}
 
 	public void setComments(String comments) {
-		this.comments = comments;
+		this.mComments = comments;
 	}
 
 	public boolean isDeleted() {
-		return deleted;
+		return mDeleted;
 	}
 
 	public void setDeleted(boolean deleted) {
-		this.deleted = deleted;
+		this.mDeleted = deleted;
 	}
 }

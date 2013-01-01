@@ -1,4 +1,4 @@
-package edu.purdue.libwaterapps.provider;
+package edu.purdue.libcommon.provider;
 
 import android.content.ContentProvider;
 import android.content.ContentUris;
@@ -10,17 +10,17 @@ import android.database.sqlite.SQLiteQueryBuilder;
 import android.net.Uri;
 import android.provider.BaseColumns;
 import android.text.TextUtils;
-import edu.purdue.libwaterapps.db.ObjectsDB;
+import edu.purdue.libcommon.db.ObjectsDB;
 
 /*
  * The provider which manages the "field"
  * 
  * This should not be used directly but rather
- * accessed via the LibWaterApps Object class.
+ * accessed via the LibCommon Object class.
  */
 public class ObjectsProvider extends ContentProvider {
 	
-	private ObjectsDB db;
+	private ObjectsDB mDb;
 	private static final UriMatcher MATCHER;
 	private static final int OBJECTS = 1;
 	private static final int OBJECT_ID = 2;
@@ -29,7 +29,7 @@ public class ObjectsProvider extends ContentProvider {
 	 * These are the constants which identifies the provider and its data
 	 */
 	public static final class Constants implements BaseColumns {
-		public static final String AUTHORITY = "edu.purdue.libwaterapps.objectsProvider";
+		public static final String AUTHORITY = "edu.purdue.libcommon.objectsProvider";
 		public static final Uri CONTENT_URI = Uri.parse("content://" + AUTHORITY + "/objects");
 		public static final String TABLE="objects";
 		public static final String DEFAULT_SORT_ORDER="_id";
@@ -46,8 +46,8 @@ public class ObjectsProvider extends ContentProvider {
 	 */
 	static {
 		MATCHER=new UriMatcher(UriMatcher.NO_MATCH);
-		MATCHER.addURI("edu.purdue.libwaterapps.objectsProvider", "objects", OBJECTS);
-		MATCHER.addURI("edu.prudue.libwaterapps.objectsProvider", "objects/#", OBJECT_ID);
+		MATCHER.addURI("edu.purdue.libcommon.objectsProvider", "objects", OBJECTS);
+		MATCHER.addURI("edu.prudue.libcommon.objectsProvider", "objects/#", OBJECT_ID);
 	}
 	
 	/*
@@ -60,9 +60,9 @@ public class ObjectsProvider extends ContentProvider {
 		/* Get hold of the field DB
 		 * This is fast because FieldDB will hold off working with the DB until it is used
 		 */
-		db=new ObjectsDB(getContext());
+		mDb=new ObjectsDB(getContext());
 		
-		return ((db == null) ? false : true);
+		return ((mDb == null) ? false : true);
 	}
 	
 	/*
@@ -73,11 +73,11 @@ public class ObjectsProvider extends ContentProvider {
 		String type;
 		switch(MATCHER.match(url)) {
 			case OBJECTS:
-				type = "vnd.libwaterapps.cursor.dir/constant";
+				type = "vnd.libcommon.cursor.dir/constant";
 			break;
 			
 			default:
-				type = "vnd.libwaterapps.cursor.item/constant";
+				type = "vnd.libcommon.cursor.item/constant";
 			break;
 		}
 		
@@ -102,7 +102,7 @@ public class ObjectsProvider extends ContentProvider {
 			orderBy=sort;
 		}
 		
-		Cursor c = qb.query(db.getReadableDatabase(), projection, selection, selectionArgs,
+		Cursor c = qb.query(mDb.getReadableDatabase(), projection, selection, selectionArgs,
 				null, null, orderBy);
 	
 		return c;
@@ -113,7 +113,7 @@ public class ObjectsProvider extends ContentProvider {
 	 */
 	@Override
 	public Uri insert(Uri url, ContentValues initialValues) {
-		long rowID = db.getWritableDatabase().insert(Constants.TABLE, Constants._ID, initialValues);
+		long rowID = mDb.getWritableDatabase().insert(Constants.TABLE, Constants._ID, initialValues);
 		
 		// If we got a rowID, get the URI and tell the world
 		if(rowID > 0) {
@@ -133,7 +133,7 @@ public class ObjectsProvider extends ContentProvider {
 	 */
 	@Override
 	public int update(Uri url, ContentValues values, String where, String[] whereArgs) {
-		int count=db.getWritableDatabase().update(Constants.TABLE, values, where, whereArgs);
+		int count=mDb.getWritableDatabase().update(Constants.TABLE, values, where, whereArgs);
 		
 		// Tell the world of the update
 		getContext().getContentResolver().notifyChange(url, null);
@@ -146,7 +146,7 @@ public class ObjectsProvider extends ContentProvider {
 	 */
 	@Override
 	public int delete(Uri url, String where, String[] whereArgs) {
-		int count=db.getWritableDatabase().delete(Constants.TABLE, where, whereArgs);
+		int count=mDb.getWritableDatabase().delete(Constants.TABLE, where, whereArgs);
 		
 		// Tell the world of the delete
 		getContext().getContentResolver().notifyChange(url, null);
