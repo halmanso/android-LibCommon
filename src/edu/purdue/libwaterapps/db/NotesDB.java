@@ -1,4 +1,4 @@
-package edu.purdue.libcommon.db;
+package edu.purdue.libwaterapps.db;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -9,7 +9,7 @@ import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
-import edu.purdue.libcommon.provider.NotesProvider;
+import edu.purdue.libwaterapps.provider.NotesProvider;
 
 /*
  * Manages the SQLite database for the NotesProvider
@@ -17,16 +17,16 @@ import edu.purdue.libcommon.provider.NotesProvider;
  */
 public class NotesDB extends SQLiteOpenHelper {
 	// A tool help keep dates formated correctly in the database
-	private static SimpleDateFormat mDateFormater = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-	private static final String mDbName = "field";
-	private static final int mVersion = 1;
+	private static SimpleDateFormat dateFormater = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+	private static final String db_name = "field";
+	private static final int version = 1;
 	
 	/* DB uses a singleton pattern */
 	public NotesDB(Context context) {
-		super(context, mDbName, null, mVersion);
+		super(context, db_name, null, version);
 		
 		// We always store and use UTC time
-		mDateFormater.setTimeZone(TimeZone.getTimeZone("UTC"));
+		dateFormater.setTimeZone(TimeZone.getTimeZone("UTC"));
 	}
 	
 	/*
@@ -58,7 +58,7 @@ public class NotesDB extends SQLiteOpenHelper {
 	 * Takes in a date and returns it in a string format
 	 */
 	public static String dateFormat(Date date) {
-		return NotesDB.mDateFormater.format(date);
+		return NotesDB.dateFormater.format(date);
 	}
 	
 	/*
@@ -69,7 +69,7 @@ public class NotesDB extends SQLiteOpenHelper {
 		Date d;
 		
 		try {
-			d = NotesDB.mDateFormater.parse(date);
+			d = NotesDB.dateFormater.parse(date);
 		} catch (ParseException e) {
 			d = new Date(0);
 		}

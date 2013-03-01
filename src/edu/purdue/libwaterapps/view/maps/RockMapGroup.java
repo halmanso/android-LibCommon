@@ -1,7 +1,6 @@
-package edu.purdue.libcommon.view.maps;
+package edu.purdue.libwaterapps.view.maps;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 
 import android.graphics.Point;
 import android.graphics.Rect;
@@ -9,7 +8,7 @@ import android.graphics.Rect;
 import com.google.android.maps.GeoPoint;
 import com.google.android.maps.Projection;
 
-import edu.purdue.libcommon.rock.Rock;
+import edu.purdue.libwaterapps.rock.Rock;
 
 public class RockMapGroup {
 	ArrayList<Rock> mRocks;
@@ -17,6 +16,8 @@ public class RockMapGroup {
 	public static final int ROCK_MAP_GROUP_UP = 1;
 	public static final int ROCK_MAP_GROUP_DOWN = 2;
 	public static final int ROCK_MAP_GROUP_BOTH = 3;
+	
+	public static final String ACTION_GROUP_SELECTED = "edu.purdue.libwaterapps.rock.GROUP_SELECTED";
 	
 	// Prepare the rock group 
 	public RockMapGroup(Rock rock) {
@@ -72,7 +73,7 @@ public class RockMapGroup {
 		int span = 0;
 		int lat;
 		
-		if(mRocks.size() > 1) {
+		if(mRocks.size() > 0) {
 			for(Rock rock : mRocks) {
 				lat = rock.getLat();
 				
@@ -94,7 +95,7 @@ public class RockMapGroup {
 		int span = 0;
 		int lon;
 		
-		if(mRocks.size() > 1) {
+		if(mRocks.size() > 0) {
 			for(Rock rock : mRocks) {
 				lon = rock.getLon();
 				
@@ -110,12 +111,8 @@ public class RockMapGroup {
 	}
 	
 	// Determine if the group is all up, down, or a mixed of both
-	public int getGroupStatus() {
+	public int getGroupPicked() {
 		Rock last = mRocks.get(0);
-		
-		if(last == null) {
-			return ROCK_MAP_GROUP_UP;
-		}
 		
 		// If a type differs then we have mixed
 		for(Rock rock : mRocks) {
@@ -133,60 +130,41 @@ public class RockMapGroup {
 		}
 	}
 	
-	// STATIC HELPER FUNCTION
 	// Returns an array list of RockMapGroup group from the given list of rocks
-	public static ArrayList<RockMapGroup> groupRocks(final ArrayList<Rock> rocks, Rect rockBound, Projection proj) {
+	// NOTE: The given list of rocks is EMPTIED. You will lose the list given to this function
+	// so make a copy of it before passing if needed later
+	public static ArrayList<RockMapGroup> groupRocks(ArrayList<Rock> rocks, Rect rockBound, Projection proj) {
 		ArrayList<RockMapGroup> rockGroups = new ArrayList<RockMapGroup>();
 		
-		// Container class for rock, point pairs
-		class RockPoint {
-			Rock rock;
-			Point point;
-		}
-		
-		// An internal list of rocks and points for grouping
-		ArrayList<RockPoint> items = new ArrayList<RockPoint>();
-		for(Rock rock : rocks) {
-			RockPoint rp = new RockPoint();
-			
-			rp.rock = rock;
-			rp.point = proj.toPixels(new GeoPoint(rock.getLat(), rock.getLon()), null);
-			
-			items.add(rp);
-		}
-		
-		// A copy of the bounds
-		Rect bound1 = new Rect(rockBound);
-		
 		// Group rocks 
-		while(!items.isEmpty()) {
-			RockPoint rp = items.remove(0);
+		while(!rocks.isEmpty()) {
+			// Grab the leader rock 
+			Rock topRock = rocks.remove(0);
+			// Make the bounds for the top rock and position it 
+			Rect topBounds = new Rect(rockBound);
+			Point topP = proj.toPixels(new GeoPoint(topRock.getLat(), topRock.getLon()), null);
+			topBounds.offsetTo(topP.x, topP.y);
 			
 			// Create a new group for this top
-			RockMapGroup group = new RockMapGroup(rp.rock);
+			RockMapGroup group = new RockMapGroup(topRock);
 			
-			// Position rock bounds
-			bound1.offsetTo(rp.point.x, rp.point.y);
-		
-			// Loop through remaining rocks
-			Iterator<RockPoint> itr = items.iterator();
-			while(itr.hasNext()) {
-				RockPoint rp2 = itr.next();
-				
-				// Make a bounds for this rock
-				Rect bound2 = new Rect(rockBound);
-				bound2.offsetTo(rp2.point.x, rp2.point.y);
+			for(Rock rock : rocks) {
+				// Get the bounds for this rock
+				Rect otherBounds = new Rect(topBounds);
+				Point otherP = proj.toPixels(new GeoPoint(rock.getLat(), rock.getLon()), null);
+				otherBounds.offsetTo(otherP.x, otherP.y);
 				
 				// If the intersect
-				if(Rect.intersects(bound1, bound2)) {
-					group.add(rp2.rock);
-					
-					itr.remove();
+				if(Rect.intersects(topBounds, otherBounds)) {
+					group.add(rock);
 				}
 			}
 			
 			// Add the group to the list
 			rockGroups.add(group);
+			
+			// Remove all the rocks which we just grouped from the pending list
+			rocks.removeAll(group.getAll());
 		}
 		
 		return rockGroups;

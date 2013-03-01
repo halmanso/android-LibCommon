@@ -1,4 +1,4 @@
-package edu.purdue.libcommon.view;
+package edu.purdue.libwaterapps.view;
 
 import android.content.Context;
 import android.content.res.TypedArray;
@@ -11,17 +11,17 @@ import android.view.animation.AnimationSet;
 import android.view.animation.TranslateAnimation;
 import android.widget.LinearLayout;
 
-import com.example.libcommon.R;
+import com.example.libwaterapps.R;
 
 /*
  * A view which extends over its parent views when "opened". It is a sliding menu view.
  */
 public class SlideLayout extends LinearLayout {
-	private int mSpeed;
-	private SlideOutDirection mSlideDirection;
-	private boolean mIsOpen;
-	private AlphaAnimation mFadeIn;
-	private AlphaAnimation mFadeOut;
+	private int speed;
+	private SlideOutDirection slideDirection;
+	private boolean isOpen;
+	private AlphaAnimation fadeIn;
+	private AlphaAnimation fadeOut;
 
 	/*
 	 * Enumeration use to translate XML attribute to the java
@@ -49,41 +49,41 @@ public class SlideLayout extends LinearLayout {
 				R.styleable.SlideLayout, 0, 0);
 
 		// Get, interpret, attributes, and store them
-		mSpeed = a.getInt(R.styleable.SlideLayout_speed, 150);
+		speed = a.getInt(R.styleable.SlideLayout_speed, 150);
 		switch (a.getInt(R.styleable.SlideLayout_slideOutDirection, 1)) {
 			case 1:
 			default:
-				mSlideDirection = SlideOutDirection.UP;
+				slideDirection = SlideOutDirection.UP;
 			break;
 
 			case 2:
-				mSlideDirection = SlideOutDirection.DOWN;
+				slideDirection = SlideOutDirection.DOWN;
 			break;
 
 			case 3:
-				mSlideDirection = SlideOutDirection.RIGHT;
+				slideDirection = SlideOutDirection.RIGHT;
 			break;
 
 			case 4:
-				mSlideDirection = SlideOutDirection.LEFT;
+				slideDirection = SlideOutDirection.LEFT;
 			break;
 		}
 
 		a.recycle();
 
 		// Start closed
-		mIsOpen = false;
+		isOpen = false;
 
 		// cache the fading animations as they don't change
-		mFadeIn = new AlphaAnimation(0.0f, 1.0f);
-		mFadeOut = new AlphaAnimation(1.0f, 0.f);
+		fadeIn = new AlphaAnimation(0.0f, 1.0f);
+		fadeOut = new AlphaAnimation(1.0f, 0.f);
 	}
 
 	/*
 	 * Returns if the view is currently open (showing) or not
 	 */
 	public boolean isOpen() {
-		return this.mIsOpen;
+		return this.isOpen;
 	}
 
 	/*
@@ -93,7 +93,7 @@ public class SlideLayout extends LinearLayout {
 		TranslateAnimation anim = null;
 		
 		// Pick the right animation end points
-		switch (mSlideDirection) {
+		switch (slideDirection) {
 			case UP:
 				if(slideType == SlideType.SHOW) {
 					anim = new TranslateAnimation(0.0f, 0.0f, getHeight(), 0.0f); 
@@ -136,16 +136,16 @@ public class SlideLayout extends LinearLayout {
 	 * Take the menu from the hidden state to the displaying state
 	 */
 	public void show() {
-		if (mIsOpen)
+		if (isOpen)
 			return;
 		
 		// Set early so that rapidly calling show() doesn't show multiple animations
-		mIsOpen = true;
+		isOpen = true;
 
 		AnimationSet set = new AnimationSet(true);
 		set.addAnimation(calcTranslateAnimation(SlideType.SHOW));
-		set.addAnimation(mFadeIn);
-		set.setDuration(mSpeed);
+		set.addAnimation(fadeIn);
+		set.setDuration(speed);
 		set.setInterpolator(new AccelerateInterpolator(1.0f));
 		set.setAnimationListener(new ShowAnimationListener());
 		
@@ -156,17 +156,17 @@ public class SlideLayout extends LinearLayout {
 	 * Take the menu from the displaying date to the hidden state
 	 */
 	public void hide() {
-		if (!mIsOpen)
+		if (!isOpen)
 			return;
 
 		// Set early so that rapidly calling hide() doesn't show multiple
 		// animations
-		mIsOpen = false;
+		isOpen = false;
 
 		AnimationSet set = new AnimationSet(true);
 		set.addAnimation(calcTranslateAnimation(SlideType.HIDE));
-		set.addAnimation(mFadeOut);
-		set.setDuration(mSpeed);
+		set.addAnimation(fadeOut);
+		set.setDuration(speed);
 		set.setInterpolator(new AccelerateInterpolator(1.0f));
 		set.setAnimationListener(new HideAnimationListener());
 
