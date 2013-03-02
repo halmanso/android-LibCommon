@@ -1,4 +1,4 @@
-package edu.purdue.libwaterapps.rock;
+package edu.purdue.autogenics.libcommon.rock;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -16,8 +16,8 @@ import android.util.Log;
 
 import com.google.android.maps.GeoPoint;
 
-import edu.purdue.libwaterapps.db.RockDB;
-import edu.purdue.libwaterapps.provider.RockProvider;
+import edu.purdue.autogenics.libcommon.db.RockDB;
+import edu.purdue.autogenics.libcommon.provider.RockProvider;
 
 /* A class which knows everything about a given rock */
 public class Rock {
@@ -49,15 +49,15 @@ public class Rock {
 	
 	public static final int BLANK_ROCK_ID = -1; 
 	
-	public static final String ACTION_ADDED = "edu.purdue.libwaterapps.rock.ADDED";
-	public static final String ACTION_UPDATED = "edu.purdue.libwaterapps.rock.UPDATED";
-	public static final String ACTION_DELETED = "edu.purdue.libwaterapps.rock.DELETED";
-	public static final String ACTION_SELECTED = "edu.purdue.libwaterapps.rock.SELECTED";
-	public static final String ACTION_REVERT_MOVE = "edu.purdue.libwaterapps.rock.REVERT_MOVE";
-	public static final String ACTION_MOVE = "edu.purdue.libwaterapps.rock.MOVE";
-	public static final String ACTION_MOVE_DONE = "edu.purdue.libwaterapps.rock.MOVE_DONE";
-	public static final String ACTION_DOUBLE_TAP = "edu.purdue.libwaterapps.rock.DOUBLE_TAP";
-	public static final String ACTION_LONG_HOLD = "edu.purdue.libwaterapps.rock.LONG_HOLD";
+	public static final String ACTION_ADDED = "edu.purdue.autogenics.libcommon.rock.ADDED";
+	public static final String ACTION_UPDATED = "edu.purdue.autogenics.libcommon.rock.UPDATED";
+	public static final String ACTION_DELETED = "edu.purdue.autogenics.libcommon.rock.DELETED";
+	public static final String ACTION_SELECTED = "edu.purdue.autogenics.libcommon.rock.SELECTED";
+	public static final String ACTION_REVERT_MOVE = "edu.purdue.autogenics.libcommon.rock.REVERT_MOVE";
+	public static final String ACTION_MOVE = "edu.purdue.autogenics.libcommon.rock.MOVE";
+	public static final String ACTION_MOVE_DONE = "edu.purdue.autogenics.libcommon.rock.MOVE_DONE";
+	public static final String ACTION_DOUBLE_TAP = "edu.purdue.autogenics.libcommon.rock.DOUBLE_TAP";
+	public static final String ACTION_LONG_HOLD = "edu.purdue.autogenics.libcommon.rock.LONG_HOLD";
 	
 	public static final String IMAGE_PATH = Environment.getExternalStorageDirectory() + "/edu.purdue.rockapp/images";
 	public static final String IMAGE_FILENAME_PATTERN = "rock_%d.png";

@@ -1,4 +1,4 @@
-package edu.purdue.libwaterapps.note;
+package edu.purdue.autogenics.libcommon.note;
 
 import java.util.ArrayList;
 
@@ -11,8 +11,8 @@ import android.util.Log;
 
 import com.google.android.maps.GeoPoint;
 
-import edu.purdue.libwaterapps.provider.NotesProvider;
-import edu.purdue.libwaterapps.provider.ObjectsProvider;
+import edu.purdue.autogenics.libcommon.provider.NotesProvider;
+import edu.purdue.autogenics.libcommon.provider.ObjectsProvider;
 
 /* A class which knows everything about a given rock */
 public class Object {

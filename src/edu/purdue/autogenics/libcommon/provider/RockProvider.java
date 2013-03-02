@@ -1,4 +1,4 @@
-package edu.purdue.libwaterapps.provider;
+package edu.purdue.autogenics.libcommon.provider;
 
 import android.content.ContentProvider;
 import android.content.ContentUris;
@@ -10,7 +10,7 @@ import android.database.sqlite.SQLiteQueryBuilder;
 import android.net.Uri;
 import android.provider.BaseColumns;
 import android.text.TextUtils;
-import edu.purdue.libwaterapps.db.RockDB;
+import edu.purdue.autogenics.libcommon.db.RockDB;
 
 /*
  * The provider which manages the "rocks"
@@ -29,7 +29,7 @@ public class RockProvider extends ContentProvider {
 	 * These are the constants which identifies the provider and its data
 	 */
 	public static final class Constants implements BaseColumns {
-		public static final String AUTHORITY = "edu.purdue.libwaterapps.provider";
+		public static final String AUTHORITY = "edu.purdue.autogenics.libcommon.provider";
 		public static final Uri CONTENT_URI = Uri.parse("content://" + AUTHORITY + "/rocks");
 		public static final String TABLE="rocks";
 		public static final String DEFAULT_SORT_ORDER="_id";

@@ -1,4 +1,4 @@
-package edu.purdue.libwaterapps.provider;
+package edu.purdue.autogenics.libcommon.provider;
 
 import android.content.ContentProvider;
 import android.content.ContentUris;
@@ -10,34 +10,31 @@ import android.database.sqlite.SQLiteQueryBuilder;
 import android.net.Uri;
 import android.provider.BaseColumns;
 import android.text.TextUtils;
-import edu.purdue.libwaterapps.db.ObjectsDB;
+import edu.purdue.autogenics.libcommon.db.NotesDB;
 
 /*
  * The provider which manages the "field"
  * 
  * This should not be used directly but rather
- * accessed via the LibWaterApps Object class.
+ * accessed via the LibWaterApps Note and Object class.
  */
-public class ObjectsProvider extends ContentProvider {
+public class NotesProvider extends ContentProvider {
 	
-	private ObjectsDB db;
+	private NotesDB db;
 	private static final UriMatcher MATCHER;
-	private static final int OBJECTS = 1;
-	private static final int OBJECT_ID = 2;
+	private static final int NOTES = 1;
+	private static final int NOTE_ID = 2;
 
 	/* 
 	 * These are the constants which identifies the provider and its data
 	 */
 	public static final class Constants implements BaseColumns {
-		public static final String AUTHORITY = "edu.purdue.libwaterapps.objectsProvider";
-		public static final Uri CONTENT_URI = Uri.parse("content://" + AUTHORITY + "/objects");
-		public static final String TABLE="objects";
+		public static final String AUTHORITY = "edu.purdue.libwaterapps.notesProvider";
+		public static final Uri CONTENT_URI = Uri.parse("content://" + AUTHORITY + "/notes");
+		public static final String TABLE="notes";
 		public static final String DEFAULT_SORT_ORDER="_id";
-		public static final String NOTES_ID = "notes_id";
-		public static final String GROUP = "groupnum";
-		public static final String TYPE = "type";
-		public static final String LAT = "lat";
-		public static final String LON = "lon";
+		public static final String COLOR = "color";
+		public static final String COMMENTS = "comments";
 		public static final String DELETED = "deleted";
 	}
 	
@@ -46,8 +43,8 @@ public class ObjectsProvider extends ContentProvider {
 	 */
 	static {
 		MATCHER=new UriMatcher(UriMatcher.NO_MATCH);
-		MATCHER.addURI("edu.purdue.libwaterapps.objectsProvider", "objects", OBJECTS);
-		MATCHER.addURI("edu.prudue.libwaterapps.objectsProvider", "objects/#", OBJECT_ID);
+		MATCHER.addURI("edu.purdue.libwaterapps.notesProvider", "notes", NOTES);
+		MATCHER.addURI("edu.prudue.libwaterapps.notesProvider", "notes/#", NOTE_ID);
 	}
 	
 	/*
@@ -60,7 +57,7 @@ public class ObjectsProvider extends ContentProvider {
 		/* Get hold of the field DB
 		 * This is fast because FieldDB will hold off working with the DB until it is used
 		 */
-		db=new ObjectsDB(getContext());
+		db=new NotesDB(getContext());
 		
 		return ((db == null) ? false : true);
 	}
@@ -72,7 +69,7 @@ public class ObjectsProvider extends ContentProvider {
 	public String getType(Uri url) {
 		String type;
 		switch(MATCHER.match(url)) {
-			case OBJECTS:
+			case NOTES:
 				type = "vnd.libwaterapps.cursor.dir/constant";
 			break;
 			
@@ -91,7 +88,7 @@ public class ObjectsProvider extends ContentProvider {
 	public Cursor query(Uri url, String[] projection, String selection,
 						String[] selectionArgs, String sort) {
 		SQLiteQueryBuilder qb = new SQLiteQueryBuilder();
-		
+	
 		qb.setTables(Constants.TABLE);
 		
 		String orderBy;

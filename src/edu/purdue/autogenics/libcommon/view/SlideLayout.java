@@ -1,4 +1,4 @@
-package edu.purdue.libwaterapps.view;
+package edu.purdue.autogenics.libcommon.view;
 
 import android.content.Context;
 import android.content.res.TypedArray;

@@ -1,4 +1,4 @@
-package edu.purdue.libwaterapps.view.maps;
+package edu.purdue.autogenics.libcommon.view.maps;
 
 import java.util.ArrayList;
 
@@ -25,7 +25,7 @@ import com.google.android.maps.MapView;
 import com.google.android.maps.Overlay;
 import com.google.android.maps.Projection;
 
-import edu.purdue.libwaterapps.rock.Rock;
+import edu.purdue.autogenics.libcommon.rock.Rock;
 
 public class RockMapOverlay extends Overlay {
 	private MapView mMapView;

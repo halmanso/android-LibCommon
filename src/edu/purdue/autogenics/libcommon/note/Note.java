@@ -1,4 +1,4 @@
-package edu.purdue.libwaterapps.note;
+package edu.purdue.autogenics.libcommon.note;
 
 import java.util.ArrayList;
 
@@ -7,8 +7,8 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
-import edu.purdue.libwaterapps.provider.NotesProvider;
-import edu.purdue.libwaterapps.provider.RockProvider;
+import edu.purdue.autogenics.libcommon.provider.NotesProvider;
+import edu.purdue.autogenics.libcommon.provider.RockProvider;
 
 /* A class which knows everything about a given rock */
 public class Note {

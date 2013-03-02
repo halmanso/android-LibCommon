@@ -1,4 +1,4 @@
-package edu.purdue.libwaterapps.view.maps;
+package edu.purdue.autogenics.libcommon.view.maps;
 
 import java.util.ArrayList;
 
@@ -8,7 +8,7 @@ import android.graphics.Rect;
 import com.google.android.maps.GeoPoint;
 import com.google.android.maps.Projection;
 
-import edu.purdue.libwaterapps.rock.Rock;
+import edu.purdue.autogenics.libcommon.rock.Rock;
 
 public class RockMapGroup {
 	ArrayList<Rock> mRocks;
@@ -17,7 +17,7 @@ public class RockMapGroup {
 	public static final int ROCK_MAP_GROUP_DOWN = 2;
 	public static final int ROCK_MAP_GROUP_BOTH = 3;
 	
-	public static final String ACTION_GROUP_SELECTED = "edu.purdue.libwaterapps.rock.GROUP_SELECTED";
+	public static final String ACTION_GROUP_SELECTED = "edu.purdue.autogenics.libcommon.rock.GROUP_SELECTED";
 	
 	// Prepare the rock group 
 	public RockMapGroup(Rock rock) {

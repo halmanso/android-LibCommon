@@ -1,4 +1,4 @@
-package edu.purdue.libwaterapps.db;
+package edu.purdue.autogenics.libcommon.db;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -9,7 +9,7 @@ import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
-import edu.purdue.libwaterapps.provider.ObjectsProvider;
+import edu.purdue.autogenics.libcommon.provider.ObjectsProvider;
 
 /*
  * Manages the SQLite database for the ObjectProvider
