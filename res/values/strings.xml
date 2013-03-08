@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">LibWaterApps</string>
+    <string name="trello_compatiable">edu.purdue.autogenics.trello</string>
 </resources>

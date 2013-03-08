@@ -10,6 +10,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Bundle;
 import android.os.Environment;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
@@ -105,6 +106,35 @@ public class Rock {
 		return rock;
 	}
 	
+	// Returns a single rock located by its trello_id
+	public static Rock getRockByTrelloId(Context context, String id) {
+		Log.d("RockApp", "getting rock by trelloid:" + id);
+		Rock rock = null;
+		String where = RockProvider.Constants.TRELLO_ID + " = '" + id + "'";
+		
+		Log.d("RockAPp", "where:" + where);
+		
+		Cursor cursor = context.getContentResolver().query(RockProvider.Constants.CONTENT_URI,
+														   Rock.rockProjection, where,
+														   null, "");
+		
+		if(cursor != null && cursor.getCount() == 1) {
+			cursor.moveToFirst();
+			rock = Rock.translateCursorToRock(context, cursor);
+			Log.d("RockApp", "Got it");
+		} else {
+			if(cursor == null){
+				Log.d("RockApp", "Not found");
+			} else {
+				Log.d("Rockppp", "Duplicate ids:" + Integer.toString(cursor.getCount()));
+			}
+		}
+		
+		cursor.close();
+				
+		return rock;
+	}
+	
 	// Returns all rocks in the database
 	public static ArrayList<Rock> getRocks(Context context) { 
 		ArrayList<Rock> rocks = new ArrayList<Rock>();
@@ -187,7 +217,7 @@ public class Rock {
 		this.setUpdateDate(new Date());
 		
 		ContentValues vals = new ContentValues();
-		vals.put(RockProvider.Constants.TRELLO_ID, "");
+		vals.put(RockProvider.Constants.TRELLO_ID, this.getTrelloId());
 		vals.put(RockProvider.Constants.LAT, this.getActualLat());
 		vals.put(RockProvider.Constants.LON, this.getActualLon());
 		vals.put(RockProvider.Constants.PICKED, Boolean.toString(this.isPicked()));
@@ -203,9 +233,8 @@ public class Rock {
 					vals);
 			
 			this.setId((int)ContentUris.parseId(uri));
-			
+			Log.d("RockApp New ROCK", "RockApp New ROCK");
 			actionIntent = new Intent(Rock.ACTION_ADDED);
-			
 		} else {
 			String where = RockProvider.Constants._ID + "=?";
 			String[] whereArgs = {Integer.toString(this.id)};
@@ -222,6 +251,70 @@ public class Rock {
 			actionIntent.putExtra("id", getId());
 			LocalBroadcastManager.getInstance(context).sendBroadcast(actionIntent);
 		}
+		
+		//Send to trello if we are syncing
+		Log.d("RockApp", "Lat:" + Integer.toString(this.getActualLat()));
+		Log.d("RockApp", "Lng:" + Integer.toString(this.getActualLon()));
+		
+		Log.d("RockApp", "TrelloId:" + this.getTrelloId());
+		//Send rock to trello
+		Intent sendIntent = new Intent();
+		Bundle extras = new Bundle();
+		extras.putString("PushCard", "Nothing Matters");
+		extras.putString("id", this.getTrelloId());
+		
+		String negLat = "";
+		Integer actLat = this.getActualLat();
+		if(this.getActualLat() < 0){
+			negLat = "-";
+			actLat = actLat * -1;
+		}
+		Integer bigLat = actLat / 1000000;
+		Integer smallLat = actLat  - (bigLat * 1000000);
+		
+		String negLng = "";
+		Integer actLng = this.getActualLon();
+		if(this.getActualLon() < 0){
+			negLng = "-";
+			actLng = actLng * -1;
+		}
+		Integer bigLng = actLng / 1000000;
+		Integer smallLng = actLng  - (bigLng * 1000000);
+		
+		String doneLat = Integer.toString(bigLat) + "." + Integer.toString(smallLat);
+		String doneLng =  Integer.toString(bigLng) + "." + Integer.toString(smallLng);
+		
+		while(doneLat.length() < 8){
+			doneLat = doneLat + "0";
+		}
+		while(doneLng.length() < 8){
+			doneLng = doneLng + "0";
+		}
+		String newName = "Lat: " + negLat + doneLat + " Lng: "+ negLng + doneLng;
+		String listId = this.isPicked() == true ? "2" : "1";
+		extras.putString("name", newName);
+		extras.putString("desc", this.getComments());
+		extras.putString("list_id", listId);
+		extras.putString("owner", "edu.purdue.autogenics.rockapp");
+		sendIntent.setAction(Intent.ACTION_SEND);
+		sendIntent.setPackage("edu.purdue.autogenics.trello");
+		sendIntent.putExtras(extras);
+		this.context.startService(sendIntent);
+		
+		/*final Context it = this.context;
+		new Thread(new Runnable() {
+			public void run() {
+				//Sync
+				Intent sendIntent2 = new Intent();
+				Bundle extras2 = new Bundle();
+				extras2.putString("Sync", "Nothing Matters");
+				extras2.putString("owner", "edu.purdue.autogenics.rockapp");
+				sendIntent2.setAction(Intent.ACTION_SEND);
+				sendIntent2.setPackage("edu.purdue.autogenics.trello");
+				sendIntent2.putExtras(extras2);
+				it.startService(sendIntent2);
+			}
+		}).run();*/
 	}
 	
 	/* 
@@ -241,7 +334,7 @@ public class Rock {
 		if(getId() < 0) {
 			return;
 		}
-		
+		Log.d("DETELE","DETELE");
 		// Mark deleted
 		setDeleted(true);
 		

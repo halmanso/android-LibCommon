@@ -10,8 +10,7 @@ import android.view.animation.Animation;
 import android.view.animation.AnimationSet;
 import android.view.animation.TranslateAnimation;
 import android.widget.LinearLayout;
-
-import com.example.libwaterapps.R;
+import edu.purdue.autogenics.libcommon.R;
 
 /*
  * A view which extends over its parent views when "opened". It is a sliding menu view.

@@ -19,13 +19,13 @@ import android.graphics.drawable.Drawable;
 import android.support.v4.content.LocalBroadcastManager;
 import android.view.MotionEvent;
 
-import com.example.libwaterapps.R;
 import com.google.android.maps.GeoPoint;
 import com.google.android.maps.MapView;
 import com.google.android.maps.Overlay;
 import com.google.android.maps.Projection;
 
 import edu.purdue.autogenics.libcommon.rock.Rock;
+import edu.purdue.autogenics.libcommon.R;
 
 public class RockMapOverlay extends Overlay {
 	private MapView mMapView;

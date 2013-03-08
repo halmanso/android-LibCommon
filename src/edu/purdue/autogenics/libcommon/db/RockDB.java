@@ -36,7 +36,7 @@ public class RockDB extends SQLiteOpenHelper {
 	public void onCreate(SQLiteDatabase db) {
 		db.execSQL("CREATE TABLE " + RockProvider.Constants.TABLE + "(" +
 				RockProvider.Constants._ID + " INTEGER PRIMARY KEY," +
-				RockProvider.Constants.TRELLO_ID + " TEXT," +
+				RockProvider.Constants.TRELLO_ID + " VARCHAR(50)," +
 				RockProvider.Constants.LAT + " INTEGER," +
 				RockProvider.Constants.LON + " INTEGER," +
 				RockProvider.Constants.PICKED + " TEXT," +

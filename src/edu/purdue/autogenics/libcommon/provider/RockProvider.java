@@ -128,7 +128,6 @@ public class RockProvider extends ContentProvider {
 		}
 		
 		throw new SQLException("Failed to insert row into " + url);
-		
 	}
 	
 	/*
