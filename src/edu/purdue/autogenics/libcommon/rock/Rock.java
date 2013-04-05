@@ -8,6 +8,7 @@ import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
@@ -17,6 +18,7 @@ import android.util.Log;
 
 import com.google.android.maps.GeoPoint;
 
+import edu.purdue.autogenics.libcommon.R;
 import edu.purdue.autogenics.libcommon.db.RockDB;
 import edu.purdue.autogenics.libcommon.provider.RockProvider;
 
@@ -108,12 +110,9 @@ public class Rock {
 	
 	// Returns a single rock located by its trello_id
 	public static Rock getRockByTrelloId(Context context, String id) {
-		Log.d("RockApp", "getting rock by trelloid:" + id);
 		Rock rock = null;
 		String where = RockProvider.Constants.TRELLO_ID + " = '" + id + "'";
-		
-		Log.d("RockAPp", "where:" + where);
-		
+				
 		Cursor cursor = context.getContentResolver().query(RockProvider.Constants.CONTENT_URI,
 														   Rock.rockProjection, where,
 														   null, "");
@@ -121,15 +120,7 @@ public class Rock {
 		if(cursor != null && cursor.getCount() == 1) {
 			cursor.moveToFirst();
 			rock = Rock.translateCursorToRock(context, cursor);
-			Log.d("RockApp", "Got it");
-		} else {
-			if(cursor == null){
-				Log.d("RockApp", "Not found");
-			} else {
-				Log.d("Rockppp", "Duplicate ids:" + Integer.toString(cursor.getCount()));
-			}
 		}
-		
 		cursor.close();
 				
 		return rock;
@@ -257,12 +248,6 @@ public class Rock {
 		Log.d("RockApp", "Lng:" + Integer.toString(this.getActualLon()));
 		
 		Log.d("RockApp", "TrelloId:" + this.getTrelloId());
-		//Send rock to trello
-		Intent sendIntent = new Intent();
-		Bundle extras = new Bundle();
-		extras.putString("PushCard", "Nothing Matters");
-		extras.putString("id", this.getTrelloId());
-		
 		String negLat = "";
 		Integer actLat = this.getActualLat();
 		if(this.getActualLat() < 0){
@@ -291,30 +276,39 @@ public class Rock {
 			doneLng = doneLng + "0";
 		}
 		String newName = "Lat: " + negLat + doneLat + " Lng: "+ negLng + doneLng;
-		String listId = this.isPicked() == true ? "2" : "1";
-		extras.putString("name", newName);
-		extras.putString("desc", this.getComments());
-		extras.putString("list_id", listId);
-		extras.putString("owner", "edu.purdue.autogenics.rockapp");
-		sendIntent.setAction(Intent.ACTION_SEND);
-		sendIntent.setPackage("edu.purdue.autogenics.trello");
-		sendIntent.putExtras(extras);
-		this.context.startService(sendIntent);
 		
-		/*final Context it = this.context;
-		new Thread(new Runnable() {
-			public void run() {
-				//Sync
-				Intent sendIntent2 = new Intent();
-				Bundle extras2 = new Bundle();
-				extras2.putString("Sync", "Nothing Matters");
-				extras2.putString("owner", "edu.purdue.autogenics.rockapp");
-				sendIntent2.setAction(Intent.ACTION_SEND);
-				sendIntent2.setPackage("edu.purdue.autogenics.trello");
-				sendIntent2.putExtras(extras2);
-				it.startService(sendIntent2);
-			}
-		}).run();*/
+		SharedPreferences settings = this.context.getSharedPreferences(this.context.getString(R.string.rockapp_preferences_name), 0);
+		String listId = (this.isPicked() == true) ? settings.getString("Rocks Removed", null) : settings.getString("Rocks In Fields", null);
+		Log.d("RockApp", "Rocks Removed ----" + settings.getString("Rocks Removed", null));
+		Log.d("RockApp", "Rocks In Fields ------" +  settings.getString("Rocks In Fields", null));
+		Log.d("RockApp", "Rocks New List Id:" + listId);
+		
+		if(notifyApplication){ //TODO create own signal
+			//Send rock to trello
+			Intent sendIntent = new Intent();
+			Bundle extras = new Bundle();
+			extras.putString("push", "card");
+			extras.putString("id", this.getTrelloId());
+			extras.putString("name", newName);
+			extras.putString("desc", this.getComments());
+			extras.putString("listId", listId);
+			extras.putString("owner", "edu.purdue.autogenics.rockapp");
+			sendIntent.setAction(Intent.ACTION_SEND);
+			sendIntent.setPackage("edu.purdue.autogenics.trello");
+			sendIntent.putExtras(extras);
+			this.context.startService(sendIntent);
+		}
+		
+		//Sync here if not delete
+		if(this.getDeleted() == false){
+			Intent sendIntent6 = new Intent();
+			Bundle extras6 = new Bundle();
+			extras6.putString("sync", "cards");
+			sendIntent6.setPackage("edu.purdue.autogenics.trello");
+			sendIntent6.setAction(Intent.ACTION_SEND);
+			sendIntent6.putExtras(extras6);
+			this.context.startService(sendIntent6);
+		}
 	}
 	
 	/* 
@@ -334,12 +328,23 @@ public class Rock {
 		if(getId() < 0) {
 			return;
 		}
-		Log.d("DETELE","DETELE");
+		Log.d("DELETE","DELETE");
 		// Mark deleted
 		setDeleted(true);
 		
 		// We will send our own notify
 		save(false);
+		
+		
+		//Send delete rock to trello
+		Intent sendIntent = new Intent();
+		Bundle extras = new Bundle();
+		extras.putString("delete", "card");
+		extras.putString("id", this.getTrelloId());
+		sendIntent.setAction(Intent.ACTION_SEND);
+		sendIntent.setPackage("edu.purdue.autogenics.trello");
+		sendIntent.putExtras(extras);
+		this.context.startService(sendIntent);
 		
 		if(notifyApplication) {
 			Intent actionIntent = new Intent(Rock.ACTION_DELETED);
