@@ -39,8 +39,7 @@ public class RockProvider extends ContentProvider {
 		public static final String PICKED = "picked";
 		public static final String COMMENTS = "comments";
 		public static final String PICTURE = "picture";
-		public static final String UPDATE_TIME = "update_time";
-		public static final String TRELLO_PULL_TIME = "trello_pull_time";
+		public static final String HAS_CHANGED = "has_changed";
 		public static final String DELETED = "deleted";
 	}
 	
@@ -49,8 +48,8 @@ public class RockProvider extends ContentProvider {
 	 */
 	static {
 		MATCHER=new UriMatcher(UriMatcher.NO_MATCH);
-		MATCHER.addURI("edu.purdue.libwaterapps.RockProvider", "rocks", ROCKS);
-		MATCHER.addURI("edu.prudue.libwaterapps.RockProvider", "rocks/#", ROCKS_ID);
+		MATCHER.addURI("edu.purdue.autogenics.libcommon.RockProvider", "rocks", ROCKS);
+		MATCHER.addURI("edu.purdue.autogenics.libcommon.RockProvider", "rocks/#", ROCKS_ID);
 	}
 	
 	/*
@@ -107,7 +106,6 @@ public class RockProvider extends ContentProvider {
 		
 		Cursor c = qb.query(db.getReadableDatabase(), projection, selection, selectionArgs,
 				null, null, orderBy);
-	
 		return c;
 	}
 	

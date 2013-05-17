@@ -16,26 +16,26 @@ import android.os.Environment;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
-import com.google.android.maps.GeoPoint;
-
 import edu.purdue.autogenics.libcommon.R;
 import edu.purdue.autogenics.libcommon.db.RockDB;
 import edu.purdue.autogenics.libcommon.provider.RockProvider;
 
 /* A class which knows everything about a given rock */
 public class Rock {
+
 	private int id = BLANK_ROCK_ID;
 	private String trelloId;
-	private int lat;
-	private int lon;
-	private int actualLat;
-	private int actualLon;
+	private double lat;
+	private double lon;
+	private double actualLat;
+	private double actualLon;
+	
 	private boolean picked;
 	private String comments;
 	private String picture;
-	private Date updateDate; 
-	private Date trelloPullDate;
 	private boolean deleted;
+	private boolean changed = true; 
+	
 	private Context context;
 	public static final String[] rockProjection = {
 		RockProvider.Constants._ID,
@@ -45,8 +45,7 @@ public class Rock {
 		RockProvider.Constants.PICKED,
 		RockProvider.Constants.COMMENTS,
 		RockProvider.Constants.PICTURE,
-		RockProvider.Constants.UPDATE_TIME,
-		RockProvider.Constants.TRELLO_PULL_TIME,
+		RockProvider.Constants.HAS_CHANGED,
 		RockProvider.Constants.DELETED
 	};
 	
@@ -72,15 +71,13 @@ public class Rock {
 	}
 	
 	public Rock(Context context) {
-		this.updateDate = new Date(0);
-		this.updateDate = new Date(0);
 		this.context = context;
 	}
 
-	public Rock(Context context, GeoPoint point, boolean picked) {
-		this.lat = point.getLatitudeE6();
+	public Rock(Context context, double latitude, double longitude, boolean picked) {
+		this.lat = latitude;
 		this.actualLat = this.lat;
-		this.lon = point.getLongitudeE6();
+		this.lon = longitude;
 		this.actualLon = this.lon;
 		this.picked = picked;
 		this.deleted = false;
@@ -134,15 +131,18 @@ public class Rock {
 		
 		Cursor cursor = context.getContentResolver().query(RockProvider.Constants.CONTENT_URI,
 														   Rock.rockProjection, where, whereArgs, "");
-		
-		cursor.moveToFirst();
-		while(!cursor.isAfterLast()) {
-			rocks.add(Rock.translateCursorToRock(context, cursor));
+		if(cursor == null){
+			Log.e("LibCommon", "Null cursor in getRocks");
+		} else {
+			cursor.moveToFirst();
+			while(!cursor.isAfterLast()) {
+				rocks.add(Rock.translateCursorToRock(context, cursor));
+				
+				cursor.moveToNext();
+			}
 			
-			cursor.moveToNext();
+			cursor.close();
 		}
-		
-		cursor.close();
 		
 		return rocks;
 	}
@@ -204,18 +204,20 @@ public class Rock {
 		
 		Log.d("Rock", "Save Occured, notify = " + notifyApplication);
 		
-		/* Set the update time to the current time */
-		this.setUpdateDate(new Date());
-		
 		ContentValues vals = new ContentValues();
 		vals.put(RockProvider.Constants.TRELLO_ID, this.getTrelloId());
-		vals.put(RockProvider.Constants.LAT, this.getActualLat());
-		vals.put(RockProvider.Constants.LON, this.getActualLon());
+		vals.put(RockProvider.Constants.LAT, this.getLat());
+		vals.put(RockProvider.Constants.LON, this.getLon());
 		vals.put(RockProvider.Constants.PICKED, Boolean.toString(this.isPicked()));
 		vals.put(RockProvider.Constants.COMMENTS, this.getComments());
 		vals.put(RockProvider.Constants.PICTURE, this.getPicture());
-		vals.put(RockProvider.Constants.UPDATE_TIME, RockDB.dateFormat(this.getUpdateDate()));
-		vals.put(RockProvider.Constants.TRELLO_PULL_TIME, "");
+		
+		int intChanged = 0;
+		if(this.getChanged()){
+			intChanged = 1;
+		}
+		
+		vals.put(RockProvider.Constants.HAS_CHANGED, intChanged);
 		vals.put(RockProvider.Constants.DELETED, this.getDeleted());
 		
 		if(this.id < 0) {
@@ -242,73 +244,6 @@ public class Rock {
 			actionIntent.putExtra("id", getId());
 			LocalBroadcastManager.getInstance(context).sendBroadcast(actionIntent);
 		}
-		
-		//Send to trello if we are syncing
-		Log.d("RockApp", "Lat:" + Integer.toString(this.getActualLat()));
-		Log.d("RockApp", "Lng:" + Integer.toString(this.getActualLon()));
-		
-		Log.d("RockApp", "TrelloId:" + this.getTrelloId());
-		String negLat = "";
-		Integer actLat = this.getActualLat();
-		if(this.getActualLat() < 0){
-			negLat = "-";
-			actLat = actLat * -1;
-		}
-		Integer bigLat = actLat / 1000000;
-		Integer smallLat = actLat  - (bigLat * 1000000);
-		
-		String negLng = "";
-		Integer actLng = this.getActualLon();
-		if(this.getActualLon() < 0){
-			negLng = "-";
-			actLng = actLng * -1;
-		}
-		Integer bigLng = actLng / 1000000;
-		Integer smallLng = actLng  - (bigLng * 1000000);
-		
-		String doneLat = Integer.toString(bigLat) + "." + Integer.toString(smallLat);
-		String doneLng =  Integer.toString(bigLng) + "." + Integer.toString(smallLng);
-		
-		while(doneLat.length() < 8){
-			doneLat = doneLat + "0";
-		}
-		while(doneLng.length() < 8){
-			doneLng = doneLng + "0";
-		}
-		String newName = "Lat: " + negLat + doneLat + " Lng: "+ negLng + doneLng;
-		
-		SharedPreferences settings = this.context.getSharedPreferences(this.context.getString(R.string.rockapp_preferences_name), 0);
-		String listId = (this.isPicked() == true) ? settings.getString("Rocks Removed", null) : settings.getString("Rocks In Fields", null);
-		Log.d("RockApp", "Rocks Removed ----" + settings.getString("Rocks Removed", null));
-		Log.d("RockApp", "Rocks In Fields ------" +  settings.getString("Rocks In Fields", null));
-		Log.d("RockApp", "Rocks New List Id:" + listId);
-		
-		if(notifyApplication){ //TODO create own signal
-			//Send rock to trello
-			Intent sendIntent = new Intent();
-			Bundle extras = new Bundle();
-			extras.putString("push", "card");
-			extras.putString("id", this.getTrelloId());
-			extras.putString("name", newName);
-			extras.putString("desc", this.getComments());
-			extras.putString("listId", listId);
-			extras.putString("owner", "edu.purdue.autogenics.rockapp");
-			sendIntent.setAction(Intent.ACTION_SEND);
-			sendIntent.setPackage("edu.purdue.autogenics.trello");
-			sendIntent.putExtras(extras);
-			this.context.startService(sendIntent);
-		}
-		
-		//Sync here if not delete
-		if(this.getDeleted() == false){
-			Intent sendIntent6 = new Intent();
-			Bundle extras6 = new Bundle();
-			extras6.putString("sync", "cards");
-			sendIntent6.setPackage("edu.purdue.autogenics.trello");
-			sendIntent6.setAction(Intent.ACTION_SEND);
-			sendIntent6.putExtras(extras6);
-			this.context.startService(sendIntent6);
-		}
 	}
 	
 	/* 
@@ -332,19 +267,11 @@ public class Rock {
 		// Mark deleted
 		setDeleted(true);
 		
+		//Mark changed
+		this.setChanged(true);
+		
 		// We will send our own notify
 		save(false);
-		
-		
-		//Send delete rock to trello
-		Intent sendIntent = new Intent();
-		Bundle extras = new Bundle();
-		extras.putString("delete", "card");
-		extras.putString("id", this.getTrelloId());
-		sendIntent.setAction(Intent.ACTION_SEND);
-		sendIntent.setPackage("edu.purdue.autogenics.trello");
-		sendIntent.putExtras(extras);
-		this.context.startService(sendIntent);
 		
 		if(notifyApplication) {
 			Intent actionIntent = new Intent(Rock.ACTION_DELETED);
@@ -362,18 +289,95 @@ public class Rock {
 		
 		rock.setId(Integer.parseInt(cursor.getString(0)));
 		rock.setTrelloId(cursor.getString(1));
-		rock.setLat(cursor.getInt(2));
-		rock.setActualLat(cursor.getInt(2));
-		rock.setLon(cursor.getInt(3));
-		rock.setActualLon(cursor.getInt(3));
+		rock.setLat(cursor.getDouble(2));
+		rock.setActualLat(cursor.getDouble(2));
+		rock.setLon(cursor.getDouble(3));
+		rock.setActualLon(cursor.getDouble(3));
 		rock.setPicked(Boolean.parseBoolean(cursor.getString(4)));
 		rock.setComments(cursor.getString(5));
 		rock.setPicture(cursor.getString(6));
-		rock.setUpdateDate(RockDB.dateParse(cursor.getString(7)));
-		rock.setTrelloPullDate(RockDB.dateParse(cursor.getString(8)));
-		rock.setDeleted(Boolean.parseBoolean(cursor.getString(9)));
+		int intChanged = cursor.getInt(7);
+		if(intChanged == 1){
+			rock.setChanged(true);
+		} else {
+			rock.setChanged(false);
+		}
+		rock.setDeleted(Boolean.parseBoolean(cursor.getString(8)));
 		
 		return rock;
+	}
+	
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		long temp;
+		temp = Double.doubleToLongBits(actualLat);
+		result = prime * result + (int) (temp ^ (temp >>> 32));
+		temp = Double.doubleToLongBits(actualLon);
+		result = prime * result + (int) (temp ^ (temp >>> 32));
+		result = prime * result
+				+ ((comments == null) ? 0 : comments.hashCode());
+		result = prime * result + ((context == null) ? 0 : context.hashCode());
+		result = prime * result + (deleted ? 1231 : 1237);
+		result = prime * result + id;
+		temp = Double.doubleToLongBits(lat);
+		result = prime * result + (int) (temp ^ (temp >>> 32));
+		temp = Double.doubleToLongBits(lon);
+		result = prime * result + (int) (temp ^ (temp >>> 32));
+		result = prime * result + (picked ? 1231 : 1237);
+		result = prime * result + ((picture == null) ? 0 : picture.hashCode());
+		result = prime * result
+				+ ((trelloId == null) ? 0 : trelloId.hashCode());
+		return result;
+	}
+	
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		Rock other = (Rock) obj;
+		if (Double.doubleToLongBits(actualLat) != Double
+				.doubleToLongBits(other.actualLat))
+			return false;
+		if (Double.doubleToLongBits(actualLon) != Double
+				.doubleToLongBits(other.actualLon))
+			return false;
+		if (comments == null) {
+			if (other.comments != null)
+				return false;
+		} else if (!comments.equals(other.comments))
+			return false;
+		if (context == null) {
+			if (other.context != null)
+				return false;
+		} else if (!context.equals(other.context))
+			return false;
+		if (deleted != other.deleted)
+			return false;
+		if (id != other.id)
+			return false;
+		if (Double.doubleToLongBits(lat) != Double.doubleToLongBits(other.lat))
+			return false;
+		if (Double.doubleToLongBits(lon) != Double.doubleToLongBits(other.lon))
+			return false;
+		if (picked != other.picked)
+			return false;
+		if (picture == null) {
+			if (other.picture != null)
+				return false;
+		} else if (!picture.equals(other.picture))
+			return false;
+		if (trelloId == null) {
+			if (other.trelloId != null)
+				return false;
+		} else if (!trelloId.equals(other.trelloId))
+			return false;
+		return true;
 	}
 	
 	public int getId() {
@@ -392,35 +396,35 @@ public class Rock {
 		this.trelloId = trelloId;
 	}
 
-	public int getLat() {
+	public double getLat() {
 		return this.lat;
 	}
 
-	public void setLat(int lat) {
+	public void setLat(double lat) {
 		this.lat = lat;
 	}
 	
-	public void setActualLat(int lat) {
+	public void setActualLat(double lat) {
 		this.actualLat = lat;
 	}
 	
-	public int getActualLat() {
+	public double getActualLat() {
 		return this.actualLat;
 	}
 	
-	public int getLon() {
+	public double getLon() {
 		return this.lon;
 	}
 
-	public void setLon(int lon) {
+	public void setLon(double lon) {
 		this.lon = lon;
 	}
 	
-	public void setActualLon(int lat) {
+	public void setActualLon(double lat) {
 		this.actualLon = lon;
 	}
 	
-	public int getActualLon() {
+	public double getActualLon() {
 		return this.actualLon;
 	}
 	
@@ -457,22 +461,6 @@ public class Rock {
 			save();
 		}
 	}
-
-	public Date getUpdateDate() {
-		return this.updateDate;
-	}
-
-	public void setUpdateDate(Date updateDate) {
-		this.updateDate = updateDate;
-	}
-
-	public Date getTrelloPullDate() {
-		return this.trelloPullDate;
-	}
-
-	public void setTrelloPullDate(Date trelloPullDate) {
-		this.trelloPullDate = trelloPullDate;
-	}
 	
 	public Context getContext() {
 		return this.context;
@@ -488,5 +476,13 @@ public class Rock {
 	
 	public void setDeleted(boolean deleted) {
 		this.deleted = deleted;
+	}
+	
+	public boolean getChanged(){
+		return this.changed;
+	}
+	
+	public void setChanged(boolean changed){
+		this.changed = changed;
 	}
 }
