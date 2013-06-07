@@ -35,6 +35,7 @@ public class Rock {
 	private String picture;
 	private boolean deleted;
 	private boolean changed = true; 
+	private Date changedDate = new Date(0);
 	
 	private Context context;
 	public static final String[] rockProjection = {
@@ -46,6 +47,7 @@ public class Rock {
 		RockProvider.Constants.COMMENTS,
 		RockProvider.Constants.PICTURE,
 		RockProvider.Constants.HAS_CHANGED,
+		RockProvider.Constants.DATE_CHANGED,
 		RockProvider.Constants.DELETED
 	};
 	
@@ -87,8 +89,7 @@ public class Rock {
 	// Returns a single rock located by its id
 	public static Rock getRock(Context context, int id) {
 		Rock rock = null;
-		String where = RockProvider.Constants._ID + " = ? " +
-					"AND NOT " + RockProvider.Constants.DELETED;
+		String where = RockProvider.Constants._ID + " = ?";
 		String[] whereArgs = { Integer.toString(id) };
 		
 		Cursor cursor = context.getContentResolver().query(RockProvider.Constants.CONTENT_URI,
@@ -123,7 +124,7 @@ public class Rock {
 		return rock;
 	}
 	
-	// Returns all rocks in the database
+	// Returns all rocks in the database that aren't deleted
 	public static ArrayList<Rock> getRocks(Context context) { 
 		ArrayList<Rock> rocks = new ArrayList<Rock>();
 		String where = "NOT " + RockProvider.Constants.DELETED;
@@ -133,6 +134,28 @@ public class Rock {
 														   Rock.rockProjection, where, whereArgs, "");
 		if(cursor == null){
 			Log.e("LibCommon", "Null cursor in getRocks");
+		} else {
+			cursor.moveToFirst();
+			while(!cursor.isAfterLast()) {
+				rocks.add(Rock.translateCursorToRock(context, cursor));
+				
+				cursor.moveToNext();
+			}
+			
+			cursor.close();
+		}
+		
+		return rocks;
+	}
+	
+	// Returns all rocks in the database
+	public static ArrayList<Rock> getAllRocks(Context context) { 
+		ArrayList<Rock> rocks = new ArrayList<Rock>();
+		
+		Cursor cursor = context.getContentResolver().query(RockProvider.Constants.CONTENT_URI,
+														   Rock.rockProjection, null, null, "");
+		if(cursor == null){
+			Log.e("LibCommon", "Null cursor in getAllRocks");
 		} else {
 			cursor.moveToFirst();
 			while(!cursor.isAfterLast()) {
@@ -202,7 +225,7 @@ public class Rock {
 	public void save(boolean notifyApplication) {
 		Intent actionIntent;
 		
-		Log.d("Rock", "Save Occured, notify = " + notifyApplication);
+		//Log.d("Rock", "Save Occured, notify = " + notifyApplication);
 		
 		ContentValues vals = new ContentValues();
 		vals.put(RockProvider.Constants.TRELLO_ID, this.getTrelloId());
@@ -213,29 +236,28 @@ public class Rock {
 		vals.put(RockProvider.Constants.PICTURE, this.getPicture());
 		
 		int intChanged = 0;
-		if(this.getChanged()){
+		if(this.getChanged() == true){
 			intChanged = 1;
 		}
 		
 		vals.put(RockProvider.Constants.HAS_CHANGED, intChanged);
-		vals.put(RockProvider.Constants.DELETED, this.getDeleted());
+		vals.put(RockProvider.Constants.DATE_CHANGED, this.getChangedDateString());
+		
+		int intDeleted = 0;
+		if(this.getDeleted() == true){
+			intDeleted = 1;
+		}
+		vals.put(RockProvider.Constants.DELETED, intDeleted);
 		
 		if(this.id < 0) {
-			Uri uri = this.context.getContentResolver().insert(
-					RockProvider.Constants.CONTENT_URI,
-					vals);
-			
+			Uri uri = this.context.getContentResolver().insert(RockProvider.Constants.CONTENT_URI,vals);
 			this.setId((int)ContentUris.parseId(uri));
 			Log.d("RockApp New ROCK", "RockApp New ROCK");
 			actionIntent = new Intent(Rock.ACTION_ADDED);
 		} else {
 			String where = RockProvider.Constants._ID + "=?";
 			String[] whereArgs = {Integer.toString(this.id)};
-			
-			this.context.getContentResolver().update(
-					RockProvider.Constants.CONTENT_URI,
-					vals, where, whereArgs);
-			
+			this.context.getContentResolver().update(RockProvider.Constants.CONTENT_URI, vals, where, whereArgs);
 			actionIntent = new Intent(Rock.ACTION_UPDATED);
 		}
 		
@@ -264,11 +286,15 @@ public class Rock {
 			return;
 		}
 		Log.d("DELETE","DELETE");
+		
 		// Mark deleted
-		setDeleted(true);
+		this.setDeleted(true);
 		
 		//Mark changed
 		this.setChanged(true);
+		
+		//Set changed date
+		this.setChangedDate(new Date());
 		
 		// We will send our own notify
 		save(false);
@@ -302,8 +328,13 @@ public class Rock {
 		} else {
 			rock.setChanged(false);
 		}
-		rock.setDeleted(Boolean.parseBoolean(cursor.getString(8)));
-		
+		rock.setChangedDate(RockDB.stringToDate(cursor.getString(8)));
+		int intDeleted = cursor.getInt(9);
+		if(intDeleted == 1){
+			rock.setDeleted(true);
+		} else {
+			rock.setDeleted(false);
+		}		
 		return rock;
 	}
 	
@@ -484,5 +515,17 @@ public class Rock {
 	
 	public void setChanged(boolean changed){
 		this.changed = changed;
+	}
+	
+	public String getChangedDateString(){
+		return RockDB.dateToString(this.changedDate);
+	}
+	
+	public Date getChangedDate(){
+		return this.changedDate;
+	}
+	
+	public void setChangedDate(Date changed){
+		this.changedDate = changed;
 	}
 }

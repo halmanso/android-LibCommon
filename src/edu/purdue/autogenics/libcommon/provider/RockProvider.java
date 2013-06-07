@@ -40,6 +40,7 @@ public class RockProvider extends ContentProvider {
 		public static final String COMMENTS = "comments";
 		public static final String PICTURE = "picture";
 		public static final String HAS_CHANGED = "has_changed";
+		public static final String DATE_CHANGED = "date_changed";
 		public static final String DELETED = "deleted";
 	}
 	
@@ -137,7 +138,6 @@ public class RockProvider extends ContentProvider {
 		
 		// Tell the world of the update
 		getContext().getContentResolver().notifyChange(url, null);
-		
 		return count;
 	}
 	
