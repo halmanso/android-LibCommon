@@ -306,6 +306,12 @@ public class Rock {
 		}
 	}
 	
+	public static void deleteAllRocksPerminately(Context context){
+		context.getContentResolver().delete(RockProvider.Constants.CONTENT_URI, null, null);
+		Intent actionIntent = new Intent(Rock.ACTION_DELETED);
+		LocalBroadcastManager.getInstance(context).sendBroadcast(actionIntent);
+	}
+	
 	/*
 	 * Internal method which can translate the result of the DB request (a Cursor object)
 	 * into our custom Rock object for consumption in the rest of the application
