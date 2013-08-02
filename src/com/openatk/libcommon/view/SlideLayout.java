@@ -1,4 +1,4 @@
-package edu.purdue.autogenics.libcommon.view;
+package com.openatk.libcommon.view;
 
 import android.content.Context;
 import android.content.res.TypedArray;
@@ -10,7 +10,7 @@ import android.view.animation.Animation;
 import android.view.animation.AnimationSet;
 import android.view.animation.TranslateAnimation;
 import android.widget.LinearLayout;
-import edu.purdue.autogenics.libcommon.R;
+import com.openatk.libcommon.R;
 
 /*
  * A view which extends over its parent views when "opened". It is a sliding menu view.

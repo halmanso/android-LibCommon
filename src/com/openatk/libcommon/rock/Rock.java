@@ -1,24 +1,22 @@
-package edu.purdue.autogenics.libcommon.rock;
+package com.openatk.libcommon.rock;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Date;
 
+import com.openatk.libcommon.db.RockDB;
+import com.openatk.libcommon.provider.RockProvider;
+
 import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.Uri;
-import android.os.Bundle;
 import android.os.Environment;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
-import edu.purdue.autogenics.libcommon.R;
-import edu.purdue.autogenics.libcommon.db.RockDB;
-import edu.purdue.autogenics.libcommon.provider.RockProvider;
 
 /* A class which knows everything about a given rock */
 public class Rock {
@@ -53,17 +51,17 @@ public class Rock {
 	
 	public static final int BLANK_ROCK_ID = -1; 
 	
-	public static final String ACTION_ADDED = "edu.purdue.autogenics.libcommon.rock.ADDED";
-	public static final String ACTION_UPDATED = "edu.purdue.autogenics.libcommon.rock.UPDATED";
-	public static final String ACTION_DELETED = "edu.purdue.autogenics.libcommon.rock.DELETED";
-	public static final String ACTION_SELECTED = "edu.purdue.autogenics.libcommon.rock.SELECTED";
-	public static final String ACTION_REVERT_MOVE = "edu.purdue.autogenics.libcommon.rock.REVERT_MOVE";
-	public static final String ACTION_MOVE = "edu.purdue.autogenics.libcommon.rock.MOVE";
-	public static final String ACTION_MOVE_DONE = "edu.purdue.autogenics.libcommon.rock.MOVE_DONE";
-	public static final String ACTION_DOUBLE_TAP = "edu.purdue.autogenics.libcommon.rock.DOUBLE_TAP";
-	public static final String ACTION_LONG_HOLD = "edu.purdue.autogenics.libcommon.rock.LONG_HOLD";
+	public static final String ACTION_ADDED = "com.openatk.libcommon.rock.ADDED";
+	public static final String ACTION_UPDATED = "com.openatk.libcommon.rock.UPDATED";
+	public static final String ACTION_DELETED = "com.openatk.libcommon.rock.DELETED";
+	public static final String ACTION_SELECTED = "com.openatk.libcommon.rock.SELECTED";
+	public static final String ACTION_REVERT_MOVE = "com.openatk.libcommon.rock.REVERT_MOVE";
+	public static final String ACTION_MOVE = "com.openatk.libcommon.rock.MOVE";
+	public static final String ACTION_MOVE_DONE = "com.openatk.libcommon.rock.MOVE_DONE";
+	public static final String ACTION_DOUBLE_TAP = "com.openatk.libcommon.rock.DOUBLE_TAP";
+	public static final String ACTION_LONG_HOLD = "com.openatk.libcommon.rock.LONG_HOLD";
 	
-	public static final String IMAGE_PATH = Environment.getExternalStorageDirectory() + "/edu.purdue.rockapp/images";
+	public static final String IMAGE_PATH = Environment.getExternalStorageDirectory() + "/com.openatk.rockapp/images";
 	public static final String IMAGE_FILENAME_PATTERN = "rock_%d.png";
 	
 	/*
@@ -304,6 +302,12 @@ public class Rock {
 			actionIntent.putExtra("id", getId());
 			LocalBroadcastManager.getInstance(context).sendBroadcast(actionIntent);
 		}
+	}
+	
+	public static void deleteAllRocksPerminately(Context context){
+		context.getContentResolver().delete(RockProvider.Constants.CONTENT_URI, null, null);
+		Intent actionIntent = new Intent(Rock.ACTION_DELETED);
+		LocalBroadcastManager.getInstance(context).sendBroadcast(actionIntent);
 	}
 	
 	/*

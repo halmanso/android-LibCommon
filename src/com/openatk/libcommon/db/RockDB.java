@@ -1,4 +1,4 @@
-package edu.purdue.autogenics.libcommon.db;
+package com.openatk.libcommon.db;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -6,11 +6,12 @@ import java.util.Date;
 import java.util.Locale;
 import java.util.TimeZone;
 
+import com.openatk.libcommon.provider.RockProvider;
+
 import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
-import edu.purdue.autogenics.libcommon.provider.RockProvider;
 
 /*
  * Manages the SQLite database for the RockProvider
@@ -25,7 +26,6 @@ public class RockDB extends SQLiteOpenHelper {
 	/* DB uses a singleton pattern */
 	public RockDB(Context context) {
 		super(context, db_name, null, version);
-		
 		// We always store and use UTC time
 		dateFormater.setTimeZone(TimeZone.getTimeZone("UTC"));
 	}

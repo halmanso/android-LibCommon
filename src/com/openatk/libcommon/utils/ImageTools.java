@@ -1,4 +1,4 @@
-package edu.purdue.autogenics.libcommon.utils;
+package com.openatk.libcommon.utils;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
